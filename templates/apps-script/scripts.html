@@ -1,0 +1,405 @@
+<script>
+/**
+ * VFA Gallery - Client-side JavaScript
+ */
+
+// State
+let state = {
+  user: currentUser,
+  path: initialPath,
+  classes: [],
+  artworks: []
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  initApp();
+});
+
+function initApp() {
+  renderUserNav();
+  routeTo(state.path);
+}
+
+// ============================================
+// ROUTING
+// ============================================
+
+function routeTo(path) {
+  state.path = path;
+  const main = document.getElementById('main-content');
+
+  switch (path) {
+    case 'home':
+      renderHome(main);
+      break;
+    case 'browse':
+      renderBrowse(main);
+      break;
+    case 'upload':
+      renderUpload(main);
+      break;
+    case 'admin':
+      renderAdmin(main);
+      break;
+    case 'profile':
+      renderProfile(main);
+      break;
+    default:
+      // Check for class/collection/artwork paths
+      if (path.startsWith('class/')) {
+        renderClass(main, path.replace('class/', ''));
+      } else if (path.startsWith('collection/')) {
+        renderCollection(main, path.replace('collection/', ''));
+      } else {
+        renderHome(main);
+      }
+  }
+}
+
+// ============================================
+// RENDER FUNCTIONS
+// ============================================
+
+function renderUserNav() {
+  const nav = document.getElementById('user-nav');
+  if (!state.user) {
+    nav.innerHTML = '<span class="nav-link">Sign in with Google</span>';
+    return;
+  }
+
+  let links = `
+    <a href="?path=profile" class="nav-link">${state.user.name}</a>
+  `;
+
+  if (state.user.role === 'student') {
+    links += `<a href="?path=upload" class="nav-link">Upload</a>`;
+  }
+
+  if (state.user.role === 'admin' || state.user.role === 'teacher') {
+    links += `<a href="?path=admin" class="nav-link">Admin</a>`;
+  }
+
+  nav.innerHTML = links;
+}
+
+function renderHome(container) {
+  container.innerHTML = `
+    <div class="hero">
+      <h1>Welcome to <span id="hero-gallery-name">Art Gallery</span></h1>
+      <p>Showcasing student artwork</p>
+    </div>
+    <section class="section">
+      <h2>Featured Work</h2>
+      <div id="featured-grid" class="artwork-grid">
+        <div class="loading">Loading featured artwork...</div>
+      </div>
+    </section>
+  `;
+
+  // Load featured artwork
+  google.script.run
+    .withSuccessHandler(artworks => {
+      renderArtworkGrid('featured-grid', artworks);
+    })
+    .withFailureHandler(err => {
+      document.getElementById('featured-grid').innerHTML = '<p>No featured artwork yet.</p>';
+    })
+    .getFeaturedArtworks();
+}
+
+function renderBrowse(container) {
+  container.innerHTML = `
+    <h1>Browse Classes</h1>
+    <div id="classes-grid" class="artwork-grid">
+      <div class="loading">Loading classes...</div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(classes => {
+      const grid = document.getElementById('classes-grid');
+      if (classes.length === 0) {
+        grid.innerHTML = '<p>No classes yet.</p>';
+        return;
+      }
+
+      grid.innerHTML = classes.map(c => `
+        <a href="?path=class/${c.id}" class="artwork-card" style="text-decoration:none;">
+          <div class="artwork-info" style="padding:1.5rem;">
+            <h3 class="artwork-title">${escapeHtml(c.name)}</h3>
+            <p class="artwork-artist">${escapeHtml(c.description || 'Class Gallery')}</p>
+            <span style="font-size:0.75rem;color:var(--color-text-light);">${c.status}</span>
+          </div>
+        </a>
+      `).join('');
+    })
+    .withFailureHandler(err => {
+      document.getElementById('classes-grid').innerHTML = '<p>Error loading classes.</p>';
+    })
+    .getClasses('active');
+}
+
+function renderUpload(container) {
+  if (!state.user || state.user.role !== 'student') {
+    container.innerHTML = '<p>Only students can upload artwork.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="upload-form">
+      <h2>Upload Artwork</h2>
+      <form id="upload-form">
+        <div class="form-group">
+          <label for="collection-select">Collection</label>
+          <select id="collection-select" required>
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="artwork-file">Image</label>
+          <input type="file" id="artwork-file" accept="image/*" required>
+        </div>
+        <div class="form-group">
+          <label for="artwork-title">Title</label>
+          <input type="text" id="artwork-title" placeholder="Untitled" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label for="artwork-description">Description (optional)</label>
+          <textarea id="artwork-description" rows="3" maxlength="500"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" id="upload-btn">Upload</button>
+      </form>
+    </div>
+  `;
+
+  // Load user's collections
+  google.script.run
+    .withSuccessHandler(collections => {
+      const select = document.getElementById('collection-select');
+      if (collections.length === 0) {
+        select.innerHTML = '<option value="">No collections - ask your teacher to add you to a class</option>';
+        return;
+      }
+      select.innerHTML = collections.map(c =>
+        `<option value="${c.id}">${escapeHtml(c.class_name)} - ${escapeHtml(c.name)}</option>`
+      ).join('');
+    })
+    .getUserCollections(state.user.id);
+
+  // Handle form submission
+  document.getElementById('upload-form').addEventListener('submit', handleUpload);
+}
+
+function renderAdmin(container) {
+  if (!state.user || (state.user.role !== 'admin' && state.user.role !== 'teacher')) {
+    container.innerHTML = '<p>Access denied.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="admin-dashboard">
+      <h1>Admin Dashboard</h1>
+      <div class="admin-section">
+        <h2>Classes</h2>
+        <button id="new-class-btn" class="btn btn-primary" style="margin-bottom:1rem;">+ New Class</button>
+        <div id="admin-classes-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('new-class-btn').addEventListener('click', showNewClassForm);
+
+  // Load classes
+  google.script.run
+    .withSuccessHandler(classes => {
+      const list = document.getElementById('admin-classes-list');
+      if (classes.length === 0) {
+        list.innerHTML = '<p>No classes yet. Create one to get started.</p>';
+        return;
+      }
+      list.innerHTML = classes.map(c => `
+        <div style="padding:1rem;border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:0.5rem;">
+          <strong>${escapeHtml(c.name)}</strong>
+          <span style="margin-left:0.5rem;font-size:0.75rem;color:var(--color-text-light);">${c.status}</span>
+          <div style="margin-top:0.5rem;">
+            <a href="?path=class/${c.id}" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.5rem;">View</a>
+          </div>
+        </div>
+      `).join('');
+    })
+    .getClasses();
+}
+
+function renderProfile(container) {
+  if (!state.user) {
+    container.innerHTML = '<p>Please sign in.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="max-width:800px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:2rem;">
+        <h1>${escapeHtml(state.user.name)}</h1>
+        <p style="color:var(--color-text-light);">${escapeHtml(state.user.email)}</p>
+      </div>
+      <h2>My Collections</h2>
+      <div id="user-collections">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(collections => {
+      const div = document.getElementById('user-collections');
+      if (collections.length === 0) {
+        div.innerHTML = '<p>No collections yet.</p>';
+        return;
+      }
+      div.innerHTML = collections.map(c => `
+        <a href="?path=collection/${c.id}" style="display:block;padding:1rem;border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:0.5rem;text-decoration:none;color:inherit;">
+          <strong>${escapeHtml(c.class_name)}</strong>
+          <span style="margin-left:0.5rem;font-size:0.75rem;color:var(--color-text-light);">${c.class_status}</span>
+        </a>
+      `).join('');
+    })
+    .getUserCollections(state.user.id);
+}
+
+function renderClass(container, classId) {
+  container.innerHTML = `
+    <div class="loading">Loading class...</div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(members => {
+      const students = members.filter(m => m.role === 'student');
+      container.innerHTML = `
+        <h1>Class Gallery</h1>
+        <h2>Students</h2>
+        <div class="artwork-grid">
+          ${students.map(s => `
+            <div class="artwork-card">
+              <div class="artwork-info">
+                <h3 class="artwork-title">${escapeHtml(s.name)}</h3>
+                <p class="artwork-artist">${escapeHtml(s.email)}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    })
+    .getClassMembers(classId);
+}
+
+function renderCollection(container, collectionId) {
+  container.innerHTML = `
+    <div class="loading">Loading collection...</div>
+  `;
+
+  google.script.run
+    .withSuccessHandler(artworks => {
+      if (artworks.length === 0) {
+        container.innerHTML = '<h1>Collection</h1><p>No artwork yet.</p>';
+        return;
+      }
+      container.innerHTML = `
+        <h1>Collection</h1>
+        <div id="collection-artworks" class="artwork-grid"></div>
+      `;
+      renderArtworkGrid('collection-artworks', artworks);
+    })
+    .getCollectionArtworks(collectionId);
+}
+
+function renderArtworkGrid(containerId, artworks) {
+  const container = document.getElementById(containerId);
+  if (!artworks || artworks.length === 0) {
+    container.innerHTML = '<p>No artwork to display.</p>';
+    return;
+  }
+
+  container.innerHTML = artworks.map(a => `
+    <div class="artwork-card">
+      <div class="artwork-image">
+        <img src="${a.thumb_url || a.image_url || ''}" alt="${escapeHtml(a.title)}" loading="lazy">
+      </div>
+      <div class="artwork-info">
+        <h3 class="artwork-title">${escapeHtml(a.title)}</h3>
+        <p class="artwork-artist">${escapeHtml(a.description || '')}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================
+// FORM HANDLERS
+// ============================================
+
+function handleUpload(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+
+  const file = document.getElementById('artwork-file').files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+
+    const data = {
+      collection_id: document.getElementById('collection-select').value,
+      title: document.getElementById('artwork-title').value || 'Untitled',
+      description: document.getElementById('artwork-description').value,
+      file_name: file.name,
+      mime_type: file.type,
+      image_data: base64
+    };
+
+    google.script.run
+      .withSuccessHandler(result => {
+        alert('Upload successful!');
+        routeTo('profile');
+      })
+      .withFailureHandler(err => {
+        alert('Upload failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Upload';
+      })
+      .uploadArtwork(data, state.user);
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function showNewClassForm() {
+  const name = prompt('Enter class name (e.g., Art 101 Fall 2025):');
+  if (!name) return;
+
+  google.script.run
+    .withSuccessHandler(result => {
+      alert('Class created!');
+      routeTo('admin');
+    })
+    .withFailureHandler(err => {
+      alert('Error: ' + err.message);
+    })
+    .createClass({ name: name }, state.user);
+}
+
+// ============================================
+// UTILITIES
+// ============================================
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>

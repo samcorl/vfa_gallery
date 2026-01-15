@@ -1,0 +1,17 @@
+{
+  "name": "vfa-gallery",
+  "version": "1.0.0",
+  "description": "Free art gallery for schools using Google Workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix site",
+    "build": "npm run build --prefix site",
+    "preview": "npm run preview --prefix site"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samcorl/vfa_gallery"
+  },
+  "author": "Sam Corl <samcorl@gmail.com>",
+  "license": "MIT"
+}

@@ -1,6 +1,6 @@
-# You Should Be In . Pictures
+# VFA.Gallery
 ## An Online Gallery for Emerging Visual Fine Artists
-### URL: https://youshouldbein.pictures
+### URL: https://vfa.gallery
 ### Developer: Sam Corl <samcorl@gmail.com>
 
 **It MUST be fun!**

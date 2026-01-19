@@ -1,4 +1,4 @@
-// Documentation content converted from markdown
+// Documentation content
 // Each doc has an id (for routing), title, and HTML content
 
 export interface DocSection {
@@ -8,7 +8,231 @@ export interface DocSection {
   readTime?: string;
 }
 
-export const setupDocs: DocSection[] = [
+// =============================================================================
+// GALLERY USER DOCUMENTATION (for vfa.gallery users)
+// =============================================================================
+
+export const gettingStartedDocs: DocSection[] = [
+  {
+    id: 'welcome',
+    title: 'Welcome to VFA Gallery',
+    readTime: '2 min',
+    content: `
+      <p>VFA.Gallery is a free online gallery for emerging visual artists. Create your portfolio, organize your work into galleries and collections, and share it with the world.</p>
+
+      <h3>What You Get</h3>
+      <ul>
+        <li>A personal artist profile at <code>vfa.gallery/your-name</code></li>
+        <li>Unlimited galleries and collections to organize your work</li>
+        <li>Easy uploads from phone or computer</li>
+        <li>Shareable links for every artwork</li>
+        <li>Customizable themes to match your style</li>
+      </ul>
+
+      <h3>Who It's For</h3>
+      <p>VFA Gallery is built for emerging artists—especially comics and manga creators who want a simple, beautiful place to showcase their work without the noise of social media.</p>
+
+      <p><strong>No likes. No follower counts. No algorithm.</strong> Just your art, presented the way you want it.</p>
+    `
+  },
+  {
+    id: 'create-account',
+    title: 'Creating Your Account',
+    readTime: '2 min',
+    content: `
+      <h3>Sign Up</h3>
+      <ol>
+        <li>Go to <a href="https://vfa.gallery" target="_blank" rel="noopener">vfa.gallery</a></li>
+        <li>Click <strong>Sign In</strong></li>
+        <li>Choose Google or Apple sign-in</li>
+        <li>Complete email verification</li>
+      </ol>
+
+      <h3>Set Up Your Profile</h3>
+      <p>After signing in, you'll set up your artist profile:</p>
+      <ul>
+        <li><strong>Display Name</strong> — How you want to be known</li>
+        <li><strong>Username</strong> — Your URL slug (e.g., <code>vfa.gallery/your-username</code>)</li>
+        <li><strong>Avatar</strong> — A profile image or logo</li>
+        <li><strong>Bio</strong> — A short description of yourself and your work</li>
+      </ul>
+
+      <h3>New Account Limits</h3>
+      <p>New accounts have a 10-upload-per-day limit for the first week. This helps us prevent spam. After that, you can upload freely within your account limits.</p>
+    `
+  },
+  {
+    id: 'uploading-artwork',
+    title: 'Uploading Artwork',
+    readTime: '3 min',
+    content: `
+      <h3>Upload an Image</h3>
+      <ol>
+        <li>Go to your profile or any collection</li>
+        <li>Click the <strong>+</strong> button or <strong>Upload</strong></li>
+        <li>Choose an image from your phone or computer</li>
+        <li>Add a title and description</li>
+        <li>Click <strong>Upload</strong></li>
+      </ol>
+
+      <h3>Image Requirements</h3>
+      <ul>
+        <li><strong>Max size:</strong> 5MB per image</li>
+        <li><strong>Formats:</strong> JPG, PNG, WebP</li>
+        <li><strong>Recommended:</strong> JPG for photos, PNG for line art</li>
+      </ul>
+
+      <h3>What Happens After Upload</h3>
+      <p>When you upload, we automatically generate:</p>
+      <ul>
+        <li>A display version (with your username watermark)</li>
+        <li>A thumbnail for gallery grids</li>
+        <li>An icon for navigation</li>
+      </ul>
+
+      <p><strong>Note:</strong> Artwork can't be overwritten—if you need to replace an image, upload a new version and remove the old one from the collection.</p>
+    `
+  },
+  {
+    id: 'organizing-work',
+    title: 'Galleries & Collections',
+    readTime: '3 min',
+    content: `
+      <h3>How Organization Works</h3>
+      <p>Your work is organized in a hierarchy:</p>
+      <ul>
+        <li><strong>Artist Profile</strong> — Your main page</li>
+        <li><strong>Galleries</strong> — Like rooms in a museum</li>
+        <li><strong>Collections</strong> — Groups of related artwork within a gallery</li>
+        <li><strong>Artworks</strong> — Individual pieces</li>
+      </ul>
+
+      <p>Example URL: <code>vfa.gallery/sam-corl/manga-portfolio/winter-2025/dragon-01</code></p>
+
+      <h3>Creating a Gallery</h3>
+      <ol>
+        <li>Go to your profile</li>
+        <li>Click <strong>New Gallery</strong></li>
+        <li>Give it a name and optional description</li>
+        <li>Choose a theme (or inherit from your profile)</li>
+      </ol>
+
+      <h3>Creating a Collection</h3>
+      <ol>
+        <li>Open a gallery</li>
+        <li>Click <strong>New Collection</strong></li>
+        <li>Name it and optionally add a hero image</li>
+        <li>Start adding artwork</li>
+      </ol>
+
+      <h3>Default Spaces</h3>
+      <p>Every account comes with a default gallery and collection for testing. You can rename or delete these once you're ready.</p>
+    `
+  },
+  {
+    id: 'sharing',
+    title: 'Sharing Your Work',
+    readTime: '2 min',
+    content: `
+      <h3>Shareable URLs</h3>
+      <p>Every page has a clean, human-readable URL you can share:</p>
+      <ul>
+        <li>Your profile: <code>vfa.gallery/your-name</code></li>
+        <li>A gallery: <code>vfa.gallery/your-name/gallery-name</code></li>
+        <li>A collection: <code>vfa.gallery/your-name/gallery/collection</code></li>
+        <li>An artwork: <code>vfa.gallery/your-name/gallery/collection/artwork</code></li>
+      </ul>
+
+      <h3>Social Sharing</h3>
+      <p>Use the share button on any artwork to post directly to Instagram, Facebook, Twitter, and more. Each share includes a link back to your gallery.</p>
+
+      <h3>Embedding</h3>
+      <p>Coming soon: embed codes for displaying your work on other websites.</p>
+    `
+  }
+];
+
+export const accountDocs: DocSection[] = [
+  {
+    id: 'profile-settings',
+    title: 'Profile Settings',
+    content: `
+      <h3>Editing Your Profile</h3>
+      <p>Go to <strong>Profile</strong> → <strong>Settings</strong> to update:</p>
+      <ul>
+        <li>Display name and username</li>
+        <li>Avatar and bio</li>
+        <li>Contact info (visible only to you and admins)</li>
+        <li>Social links</li>
+      </ul>
+
+      <h3>Privacy</h3>
+      <p>Your email is never shown publicly. Only your username appears on your work.</p>
+    `
+  },
+  {
+    id: 'themes',
+    title: 'Customizing Themes',
+    content: `
+      <h3>How Themes Work</h3>
+      <p>Themes control colors and styling. You can set themes at different levels:</p>
+      <ul>
+        <li><strong>Profile theme</strong> — Default for all your content</li>
+        <li><strong>Gallery theme</strong> — Overrides profile for that gallery</li>
+        <li><strong>Collection theme</strong> — Overrides gallery for that collection</li>
+        <li><strong>Artwork theme</strong> — Overrides collection for that piece</li>
+      </ul>
+
+      <h3>Available Themes</h3>
+      <p>Choose from system themes (light, dark, gallery white, etc.) or create your own custom theme with your preferred colors.</p>
+
+      <h3>Public Themes</h3>
+      <p>You can make your custom themes public to share with other artists.</p>
+    `
+  },
+  {
+    id: 'messages',
+    title: 'Messages & Feedback',
+    content: `
+      <h3>Receiving Feedback</h3>
+      <p>Other users can send you direct messages about your work. Messages are private—there's no public comment section.</p>
+
+      <h3>Message Guidelines</h3>
+      <p>All messages are checked for tone. Negative or abusive messages won't be delivered. This is a supportive community for artists.</p>
+
+      <h3>Contacting Admins</h3>
+      <p>Use the <strong>Messages</strong> section to reach site administrators if you have questions or concerns.</p>
+    `
+  }
+];
+
+export const galleryTroubleshootingDoc: DocSection = {
+  id: 'troubleshooting',
+  title: 'Troubleshooting',
+  content: `
+    <h3>Can't Sign In</h3>
+    <p>Make sure you're using the same Google or Apple account you signed up with. Try clearing your browser cache.</p>
+
+    <h3>Upload Failed</h3>
+    <ul>
+      <li>Check that your image is under 5MB</li>
+      <li>Try converting to JPG format</li>
+      <li>Make sure you're connected to the internet</li>
+    </ul>
+
+    <h3>Image Looks Wrong</h3>
+    <p>Images are automatically resized for display. If the quality looks off, try uploading a higher-resolution original.</p>
+
+    <h3>Need Help?</h3>
+    <p>Contact us through the <strong>Messages</strong> section or email <a href="mailto:samcorl@gmail.com">samcorl@gmail.com</a>.</p>
+  `
+};
+
+// =============================================================================
+// EDU DOCUMENTATION (for schools setting up their own gallery)
+// =============================================================================
+
+export const eduSetupDocs: DocSection[] = [
   {
     id: 'overview',
     title: 'What You\'re Building',
@@ -225,7 +449,7 @@ export const setupDocs: DocSection[] = [
   }
 ];
 
-export const operationsDocs: DocSection[] = [
+export const eduOperationsDocs: DocSection[] = [
   {
     id: 'teacher-guide',
     title: 'Teacher Guide',
@@ -316,7 +540,7 @@ export const operationsDocs: DocSection[] = [
   }
 ];
 
-export const troubleshootingDoc: DocSection = {
+export const eduTroubleshootingDoc: DocSection = {
   id: 'troubleshooting',
   title: 'Troubleshooting',
   content: `

@@ -8,7 +8,8 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/docs', label: 'Setup Guide' },
+    { href: '/docs', label: 'Docs' },
+    { href: '/edu', label: 'For Schools' },
     { href: '/about', label: 'About' },
   ];
 
@@ -26,19 +27,24 @@ export function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map(link => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={`text-sm font-medium transition-colors ${
-                  location.pathname === link.href
-                    ? 'text-artist-600'
-                    : 'text-canvas-600 hover:text-canvas-900'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map(link => {
+              const isActive = link.href === '/'
+                ? location.pathname === '/'
+                : location.pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-artist-600'
+                      : 'text-canvas-600 hover:text-canvas-900'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <a
               href="https://github.com/samcorl/vfa_gallery"
               target="_blank"
@@ -64,20 +70,25 @@ export function Header() {
         {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t border-canvas-200">
             <div className="flex flex-col gap-3">
-              {navLinks.map(link => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm font-medium py-2 ${
-                    location.pathname === link.href
-                      ? 'text-artist-600'
-                      : 'text-canvas-600'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map(link => {
+                const isActive = link.href === '/'
+                  ? location.pathname === '/'
+                  : location.pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-sm font-medium py-2 ${
+                      isActive
+                        ? 'text-artist-600'
+                        : 'text-canvas-600'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
               <a
                 href="https://github.com/samcorl/vfa_gallery"
                 target="_blank"

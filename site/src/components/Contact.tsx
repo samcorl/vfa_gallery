@@ -8,12 +8,12 @@ export function Contact() {
           Questions? Ideas?
         </h2>
         <p className="text-lg text-canvas-300 mb-10 max-w-2xl mx-auto">
-          This project is open source and community-driven. Reach out if you need help getting started or have suggestions to improve the guides.
+          This project is open source and community-driven. Reach out if you need help getting started or have suggestions.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="mailto:samcorl@gmail.com?subject=VFA%20Gallery%20Question"
+            href="mailto:sam@samcorl.com?subject=VFA%20Gallery%20Question"
             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-canvas-800 font-semibold rounded-lg hover:bg-canvas-100 transition-colors"
           >
             <Mail className="w-5 h-5" />
@@ -34,7 +34,7 @@ export function Contact() {
           <div className="flex items-center justify-center gap-2 text-canvas-400">
             <HelpCircle className="w-4 h-4" />
             <span className="text-sm">
-              Built by <a href="https://samcorl.com" target="_blank" rel="noopener noreferrer" className="text-canvas-300 hover:text-white transition-colors">Sam Corl</a> for art teachers everywhere
+              Built by <a href="https://samcorl.com" target="_blank" rel="noopener noreferrer" className="text-canvas-300 hover:text-white transition-colors">Sam Corl</a> for emerging artists everywhere
             </span>
           </div>
         </div>

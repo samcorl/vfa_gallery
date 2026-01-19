@@ -1,35 +1,35 @@
-import { Upload, Users, Palette, Shield, Smartphone, FolderOpen } from 'lucide-react';
+import { Upload, FolderHeart, Palette, Share2, Smartphone, Link as LinkIcon } from 'lucide-react';
 
 const features = [
   {
     icon: Upload,
     title: 'Easy Uploads',
-    description: 'Students upload from phone or computer. Auto-resizing and thumbnails included.',
+    description: 'Upload from phone or computer. Auto-resizing, thumbnails, and watermarks included.',
   },
   {
-    icon: Users,
-    title: 'Class Galleries',
-    description: 'Organize by class and semester. Each student gets their own collection.',
+    icon: FolderHeart,
+    title: 'Galleries & Collections',
+    description: 'Organize your work into galleries and collections. Curate like a real museum.',
   },
   {
     icon: Palette,
     title: 'Customizable Themes',
-    description: 'Light, dark, or custom colors. Let the art speak for itself.',
+    description: 'Light, dark, or custom colors. Let your art speak for itself.',
   },
   {
-    icon: Shield,
-    title: 'School-Only Access',
-    description: 'Workspace SSO keeps it private. Only school accounts can sign in.',
+    icon: Share2,
+    title: 'Built for Sharing',
+    description: 'Every artwork gets a shareable URL. Easy social media integration.',
   },
   {
     icon: Smartphone,
     title: 'Mobile-First',
-    description: 'Works great on phones where students actually are.',
+    description: 'Designed for phones first. Upload, browse, and share from anywhere.',
   },
   {
-    icon: FolderOpen,
-    title: 'Persistent Portfolios',
-    description: 'Student work persists across semesters on their profile page.',
+    icon: LinkIcon,
+    title: 'Clean URLs',
+    description: 'Human-readable links like /your-name/gallery/collection/artwork.',
   },
 ];
 
@@ -40,10 +40,10 @@ export function Features() {
         {/* Section header */}
         <div className="text-center mb-12">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-canvas-900 mb-4">
-            Built for Art Teachers
+            Built for Emerging Artists
           </h2>
           <p className="text-lg text-canvas-600 max-w-2xl mx-auto">
-            Everything you need, nothing you don't. Simple tools that stay out of the way.
+            Everything you need, nothing you don't. Simple tools that let your art shine.
           </p>
         </div>
 

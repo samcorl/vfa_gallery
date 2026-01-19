@@ -17,7 +17,10 @@ export function Footer() {
 
           <nav className="flex items-center gap-6 text-sm">
             <Link to="/docs" className="text-canvas-600 hover:text-canvas-900 transition-colors">
-              Setup Guide
+              Docs
+            </Link>
+            <Link to="/edu" className="text-canvas-600 hover:text-canvas-900 transition-colors">
+              For Schools
             </Link>
             <a
               href="https://github.com/samcorl/vfa_gallery"
@@ -28,7 +31,7 @@ export function Footer() {
               GitHub
             </a>
             <a
-              href="mailto:samcorl@gmail.com"
+              href="mailto:sam@samcorl.com"
               className="text-canvas-600 hover:text-canvas-900 transition-colors"
             >
               Contact

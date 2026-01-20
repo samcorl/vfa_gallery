@@ -1,5 +1,5 @@
 # Technical Specification
-## You Should Be In . Pictures
+## VFA.gallery
 
 ### Overview
 An online gallery platform for emerging visual fine artists, optimized for comics and manga creators. Mobile-first, minimalist design that lets the art speak for itself.

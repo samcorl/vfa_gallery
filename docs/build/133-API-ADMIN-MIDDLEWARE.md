@@ -334,7 +334,7 @@ Expected response (403):
 1. Create or promote a user to admin role in database:
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="UPDATE users SET role = 'admin' WHERE id = 'user_id_here';"
 ```
 
@@ -362,7 +362,7 @@ Expected response (200):
 2. Suspend the user in database:
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="UPDATE users SET status = 'suspended' WHERE id = 'user_id_here';"
 ```
 
@@ -428,7 +428,7 @@ Expected response (401):
 2. Set status to 'deactivated':
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="UPDATE users SET status = 'deactivated' WHERE id = 'user_id_here';"
 ```
 

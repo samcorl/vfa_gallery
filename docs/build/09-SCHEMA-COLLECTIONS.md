@@ -44,7 +44,7 @@ CREATE TABLE collections (
 ### Step 1: Verify Galleries Table Exists
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name='galleries';"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name='galleries';"
 ```
 
 Expected output: Shows `galleries` table name. If no output, complete Build 08 first.
@@ -78,14 +78,14 @@ CREATE TABLE collections (
 
 ### Step 4: Execute Migration
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0004_create_collections.sql
+wrangler d1 execute site --file=migrations/0004_create_collections.sql
 ```
 
 Expected output: Success message indicating the table was created.
 
 ### Step 5: Verify Table Creation
 ```bash
-wrangler d1 execute vfa-gallery --command=".tables"
+wrangler d1 execute site --command=".tables"
 ```
 
 Expected output: Shows `collections` table in the list.
@@ -99,19 +99,19 @@ Expected output: Shows `collections` table in the list.
 
 ### Test 1: Table Exists
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name='collections';"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name='collections';"
 ```
 Confirm: Returns `collections` table name.
 
 ### Test 2: Schema Matches
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(collections);"
+wrangler d1 execute site --command="PRAGMA table_info(collections);"
 ```
 Confirm: All columns present: id, gallery_id, slug, name, description, hero_image_url, theme_id, is_default, status, created_at, updated_at.
 
 ### Test 3: Column Types Correct
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(collections);"
+wrangler d1 execute site --command="PRAGMA table_info(collections);"
 ```
 Confirm:
 - `id`, `gallery_id`, `slug`, `name`, `description`, `hero_image_url`, `theme_id`, `status`, `created_at`, `updated_at` are TEXT
@@ -120,88 +120,88 @@ Confirm:
 ### Test 4: Setup Test Data
 Create a test user and gallery to reference:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'collections@example.com', 'collectionuser');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-1', 'user-1', 'main', 'Main Gallery');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'collections@example.com', 'collectionuser');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-1', 'user-1', 'main', 'Main Gallery');"
 ```
 
 ### Test 5: Foreign Key Constraint
 Create a collection with the gallery from Test 4:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-1', 'gal-1', 'featured', 'Featured Works');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-1', 'gal-1', 'featured', 'Featured Works');"
 ```
 Confirm: Insert succeeds.
 
 ### Test 6: Foreign Key Constraint Validation
 Try creating a collection with a non-existent gallery:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-2', 'nonexistent-gallery', 'invalid', 'Invalid Collection');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-2', 'nonexistent-gallery', 'invalid', 'Invalid Collection');"
 ```
 Confirm: Insert fails with foreign key constraint error (or succeeds if FK constraints not enforced, which is acceptable in D1).
 
 ### Test 7: Composite Unique Constraint (Same Gallery, Different Slug)
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-2', 'gal-1', 'secondary', 'Secondary Works');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-2', 'gal-1', 'secondary', 'Secondary Works');"
 ```
 Confirm: Insert succeeds (same gallery, different slug is allowed).
 
 ### Test 8: Composite Unique Constraint (Different Gallery, Same Slug)
 Create another gallery and collection with the same slug:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-2', 'user-1', 'secondary', 'Secondary Gallery');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-3', 'gal-2', 'featured', 'Featured Works for Gallery 2');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-2', 'user-1', 'secondary', 'Secondary Gallery');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-3', 'gal-2', 'featured', 'Featured Works for Gallery 2');"
 ```
 Confirm: Insert succeeds (different galleries can have collections with the same slug).
 
 ### Test 9: Composite Unique Constraint (Same Gallery, Same Slug)
 Try creating another collection for gallery-1 with slug 'featured':
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-4', 'gal-1', 'featured', 'Duplicate Featured Works');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-4', 'gal-1', 'featured', 'Duplicate Featured Works');"
 ```
 Confirm: Insert fails with UNIQUE constraint error.
 
 ### Test 10: Default Values
 Check the collection created in Test 5:
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT is_default, status, created_at FROM collections WHERE id='col-1';"
+wrangler d1 execute site --command="SELECT is_default, status, created_at FROM collections WHERE id='col-1';"
 ```
 Confirm: Returns `is_default=0`, `status='active'`, and a timestamp in `created_at`.
 
 ### Test 11: Boolean Field (is_default)
 Update the collection to be the default:
 ```bash
-wrangler d1 execute vfa-gallery --command="UPDATE collections SET is_default=1 WHERE id='col-1';"
-wrangler d1 execute vfa-gallery --command="SELECT is_default FROM collections WHERE id='col-1';"
+wrangler d1 execute site --command="UPDATE collections SET is_default=1 WHERE id='col-1';"
+wrangler d1 execute site --command="SELECT is_default FROM collections WHERE id='col-1';"
 ```
 Confirm: Returns `is_default=1`.
 
 ### Test 12: Cascade Delete - Gallery Deletion
 Delete the gallery from Test 4:
 ```bash
-wrangler d1 execute vfa-gallery --command="DELETE FROM galleries WHERE id='gal-1';"
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM collections WHERE gallery_id='gal-1';"
+wrangler d1 execute site --command="DELETE FROM galleries WHERE id='gal-1';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM collections WHERE gallery_id='gal-1';"
 ```
 Confirm: All collections for that gallery are deleted (count returns 0).
 
 ### Test 13: Full Collection Details
 Create a collection with complete information:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name, description, hero_image_url, theme_id, status) VALUES ('col-5', 'gal-2', 'paintings', 'Oil Paintings', 'A collection of original oil paintings', 'https://example.com/hero.jpg', 'theme-classic', 'active');"
-wrangler d1 execute vfa-gallery --command="SELECT description, hero_image_url, theme_id FROM collections WHERE id='col-5';"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name, description, hero_image_url, theme_id, status) VALUES ('col-5', 'gal-2', 'paintings', 'Oil Paintings', 'A collection of original oil paintings', 'https://example.com/hero.jpg', 'theme-classic', 'active');"
+wrangler d1 execute site --command="SELECT description, hero_image_url, theme_id FROM collections WHERE id='col-5';"
 ```
 Confirm: All fields are stored and retrieved correctly.
 
 ### Test 14: Status Field Variations
 Update the status to archived:
 ```bash
-wrangler d1 execute vfa-gallery --command="UPDATE collections SET status='archived' WHERE id='col-5';"
-wrangler d1 execute vfa-gallery --command="SELECT status FROM collections WHERE id='col-5';"
+wrangler d1 execute site --command="UPDATE collections SET status='archived' WHERE id='col-5';"
+wrangler d1 execute site --command="SELECT status FROM collections WHERE id='col-5';"
 ```
 Confirm: Returns `status='archived'`.
 
 ### Test 15: Query Collections by Gallery
 Query all collections for a gallery:
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT id, slug, name FROM collections WHERE gallery_id='gal-2' ORDER BY created_at;"
+wrangler d1 execute site --command="SELECT id, slug, name FROM collections WHERE gallery_id='gal-2' ORDER BY created_at;"
 ```
 Confirm: Returns all collections for that gallery.
 
@@ -220,7 +220,7 @@ DROP TABLE IF EXISTS collections;
 
 Then execute:
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0005_rollback_collections.sql
+wrangler d1 execute site --file=migrations/0005_rollback_collections.sql
 ```
 
 ## Success Criteria

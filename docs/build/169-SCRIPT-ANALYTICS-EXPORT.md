@@ -33,7 +33,7 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Create Analytics Export Script
 
-Create `/vfa-gallery/scripts/analytics.rb`:
+Create `/site/scripts/analytics.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -50,7 +50,7 @@ class Config
   attr_reader :db_path, :output_format, :start_date, :end_date, :output_file, :metric, :remote
 
   def initialize
-    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/vfa-gallery-db.sqlite3', __dir__)
+    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/site-db.sqlite3', __dir__)
     @output_format = 'json'
     @start_date = (Date.today - 30).to_s
     @end_date = Date.today.to_s
@@ -369,7 +369,7 @@ class AnalyticsApp
   def initialize(config)
     @config = config
     @db = if @config.remote
-            D1RemoteDatabase.new('vfa-gallery-db')
+            D1RemoteDatabase.new('site-db')
           else
             AnalyticsDatabase.new(@config.db_path)
           end
@@ -549,12 +549,12 @@ end
 ### Step 2: Make Script Executable
 
 ```bash
-chmod +x /vfa-gallery/scripts/analytics.rb
+chmod +x /site/scripts/analytics.rb
 ```
 
 ### Step 3: Add Documentation
 
-Update `/vfa-gallery/docs/ADMIN-SCRIPTS.md`:
+Update `/site/docs/ADMIN-SCRIPTS.md`:
 
 ```markdown
 ## Analytics Export Script
@@ -668,10 +668,10 @@ Override with `--start` and `--end` flags (YYYY-MM-DD format).
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/analytics.rb` - Analytics export script (executable)
+- `/site/scripts/analytics.rb` - Analytics export script (executable)
 
 **Modified:**
-- `/vfa-gallery/docs/ADMIN-SCRIPTS.md` - Add analytics documentation
+- `/site/docs/ADMIN-SCRIPTS.md` - Add analytics documentation
 
 ---
 

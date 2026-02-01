@@ -697,7 +697,7 @@ Expected response (200) with empty messages:
 
 ```bash
 # Example (via direct DB or test helper)
-wrangler d1 execute vfa-gallery --command="
+wrangler d1 execute site --command="
   INSERT INTO messages (id, sender_id, recipient_id, body, status, tone_score)
   VALUES ('msg_test1', 'user_1', 'user_2', 'Test message 1', 'pending_review', 0.8)
 "

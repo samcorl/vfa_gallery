@@ -39,7 +39,7 @@ npm install -D jest @testing-library/react
 
 ### Step 2: Define Accessible Color Palette in Tailwind
 
-Update `/vfa-gallery/tailwind.config.js` with an accessible color palette:
+Update `/site/tailwind.config.js` with an accessible color palette:
 
 ```javascript
 export default {
@@ -132,7 +132,7 @@ export default {
 
 ### Step 3: Create Contrast Test Script
 
-Create `/vfa-gallery/scripts/check-contrast.js`:
+Create `/site/scripts/check-contrast.js`:
 
 ```javascript
 const contrastRatio = require('contrast-ratio');
@@ -178,7 +178,7 @@ console.log(`\nSummary: ${passCount} passed, ${failCount} failed`);
 process.exit(failCount > 0 ? 1 : 0);
 ```
 
-Update `/vfa-gallery/package.json` scripts:
+Update `/site/package.json` scripts:
 
 ```json
 {
@@ -200,7 +200,7 @@ npm run contrast:check
 
 Update color usage in components to use contrast-compliant colors.
 
-In `/vfa-gallery/src/components/Layout/Header.tsx`:
+In `/site/src/components/Layout/Header.tsx`:
 
 ```tsx
 export function Header() {
@@ -228,7 +228,7 @@ export function Header() {
 }
 ```
 
-In `/vfa-gallery/src/components/UI/Button.tsx`:
+In `/site/src/components/UI/Button.tsx`:
 
 ```tsx
 interface ButtonProps {
@@ -270,7 +270,7 @@ export function Button({
 }
 ```
 
-In `/vfa-gallery/src/components/UI/Alert.tsx`:
+In `/site/src/components/UI/Alert.tsx`:
 
 ```tsx
 interface AlertProps {
@@ -320,7 +320,7 @@ export function Alert({ type, title, message, onClose }: AlertProps) {
 
 ### Step 5: Document Accessible Color Usage
 
-Create `/vfa-gallery/docs/ACCESSIBLE-COLORS.md`:
+Create `/site/docs/ACCESSIBLE-COLORS.md`:
 
 ```markdown
 # Accessible Color Usage
@@ -354,7 +354,7 @@ Run: `npm run contrast:check` to validate all color combinations.
 
 ### Step 6: Test Focus Indicators
 
-Update `/vfa-gallery/src/index.css` to ensure visible focus states:
+Update `/site/src/index.css` to ensure visible focus states:
 
 ```css
 /* Focus styles are critical for both keyboard and screen reader users */
@@ -401,7 +401,7 @@ grep -r "#[0-9a-f]\{6\}\|rgb(" src/ --include="*.tsx" --include="*.css"
 
 ### Step 8: Create Contrast Checker Component
 
-Create `/vfa-gallery/src/components/Dev/ContrastTester.tsx` for development:
+Create `/site/src/components/Dev/ContrastTester.tsx` for development:
 
 ```tsx
 import React from 'react';
@@ -506,17 +506,17 @@ Ensure contrast checks run on every pull request.
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/check-contrast.js` - Automated contrast ratio testing script
-- `/vfa-gallery/src/components/UI/Button.tsx` - Accessible button component with color variants
-- `/vfa-gallery/src/components/UI/Alert.tsx` - Accessible alert component
-- `/vfa-gallery/src/components/Dev/ContrastTester.tsx` - Development contrast testing tool
-- `/vfa-gallery/docs/ACCESSIBLE-COLORS.md` - Documentation of color usage
+- `/site/scripts/check-contrast.js` - Automated contrast ratio testing script
+- `/site/src/components/UI/Button.tsx` - Accessible button component with color variants
+- `/site/src/components/UI/Alert.tsx` - Accessible alert component
+- `/site/src/components/Dev/ContrastTester.tsx` - Development contrast testing tool
+- `/site/docs/ACCESSIBLE-COLORS.md` - Documentation of color usage
 
 **Modified:**
-- `/vfa-gallery/tailwind.config.js` - Define accessible color palette with tested ratios
-- `/vfa-gallery/src/components/Layout/Header.tsx` - Use palette colors (Primary 700)
-- `/vfa-gallery/src/index.css` - Add visible focus indicator styles
-- `/vfa-gallery/package.json` - Add contrast:check script
+- `/site/tailwind.config.js` - Define accessible color palette with tested ratios
+- `/site/src/components/Layout/Header.tsx` - Use palette colors (Primary 700)
+- `/site/src/index.css` - Add visible focus indicator styles
+- `/site/package.json` - Add contrast:check script
 
 ---
 

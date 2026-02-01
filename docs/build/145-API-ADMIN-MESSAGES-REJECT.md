@@ -374,7 +374,7 @@ Expected response (200):
 ### Test 7: Verify Database Update
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="SELECT id, status, reviewed_by, reviewed_at, rejection_reason FROM messages WHERE id = 'msg_test2';"
 ```
 

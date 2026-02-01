@@ -25,10 +25,10 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Create D1 Database
 
-From the project root (`/vfa-gallery`), run:
+From the project root (`/site`), run:
 
 ```bash
-npx wrangler d1 create vfa-gallery-db
+npx wrangler d1 create site-db
 ```
 
 This command will:
@@ -47,10 +47,10 @@ Save the database ID - you'll need it in the next step.
 
 ### Step 2: Add D1 Binding to wrangler.toml
 
-Edit `/vfa-gallery/wrangler.toml` and add a `[[d1_databases]]` section. Replace `DATABASE_ID` with the actual ID from Step 1:
+Edit `/site/wrangler.toml` and add a `[[d1_databases]]` section. Replace `DATABASE_ID` with the actual ID from Step 1:
 
 ```toml
-name = "vfa-gallery"
+name = "site"
 type = "javascript"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -66,23 +66,23 @@ format = "service-worker"
 # D1 Database Binding
 [[d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 
 [env.production]
-name = "vfa-gallery"
+name = "site"
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 
 [env.preview]
-name = "vfa-gallery-preview"
+name = "site-preview"
 
 [[env.preview.d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 ```
 
@@ -109,7 +109,7 @@ Create an empty migration file to test the setup. Wrangler migrations use timest
 touch migrations/0000_initial.sql
 ```
 
-Edit `/vfa-gallery/migrations/0000_initial.sql` and add a placeholder comment:
+Edit `/site/migrations/0000_initial.sql` and add a placeholder comment:
 
 ```sql
 -- VFA.gallery Database Initialization
@@ -124,7 +124,7 @@ Edit `/vfa-gallery/migrations/0000_initial.sql` and add a placeholder comment:
 List all migrations to verify the file was created:
 
 ```bash
-npx wrangler d1 migrations list vfa-gallery-db
+npx wrangler d1 migrations list site-db
 ```
 
 This should output:
@@ -140,7 +140,7 @@ If you get an error about "migrations to be applied", the migration is not yet e
 To test migrations locally, use the `--local` flag:
 
 ```bash
-npx wrangler d1 execute vfa-gallery-db --file migrations/0000_initial.sql --local
+npx wrangler d1 execute site-db --file migrations/0000_initial.sql --local
 ```
 
 This should complete without errors (since the migration is just a comment).
@@ -152,7 +152,7 @@ Output should show:
 
 ### Step 7: Create Migration Helper Documentation
 
-Create a file `/vfa-gallery/docs/MIGRATIONS-GUIDE.md` for future reference:
+Create a file `/site/docs/MIGRATIONS-GUIDE.md` for future reference:
 
 ```markdown
 # Database Migration Guide
@@ -161,12 +161,12 @@ Create a file `/vfa-gallery/docs/MIGRATIONS-GUIDE.md` for future reference:
 
 ### Development (Local)
 ```bash
-npx wrangler d1 migrations apply vfa-gallery-db --local
+npx wrangler d1 migrations apply site-db --local
 ```
 
 ### Production
 ```bash
-npx wrangler d1 migrations apply vfa-gallery-db --remote
+npx wrangler d1 migrations apply site-db --remote
 ```
 
 ## Creating New Migrations
@@ -186,7 +186,7 @@ npx wrangler d1 migrations apply vfa-gallery-db --remote
 
 3. Apply locally to test:
    ```bash
-   npx wrangler d1 execute vfa-gallery-db --file migrations/0001_create_users_table.sql --local
+   npx wrangler d1 execute site-db --file migrations/0001_create_users_table.sql --local
    ```
 
 4. Once tested, push to main branch for production deployment
@@ -195,29 +195,29 @@ npx wrangler d1 migrations apply vfa-gallery-db --remote
 
 ### Local
 ```bash
-npx wrangler d1 execute vfa-gallery-db "SELECT sql FROM sqlite_master WHERE type='table';" --local
+npx wrangler d1 execute site-db "SELECT sql FROM sqlite_master WHERE type='table';" --local
 ```
 
 ### Remote
 ```bash
-npx wrangler d1 execute vfa-gallery-db "SELECT sql FROM sqlite_master WHERE type='table';" --remote
+npx wrangler d1 execute site-db "SELECT sql FROM sqlite_master WHERE type='table';" --remote
 ```
 ```
 
-Place this file at `/vfa-gallery/docs/MIGRATIONS-GUIDE.md`.
+Place this file at `/site/docs/MIGRATIONS-GUIDE.md`.
 
 ### Step 8: Verify D1 Binding in wrangler.toml
 
 Run a quick check to ensure the configuration is valid:
 
 ```bash
-npx wrangler d1 info vfa-gallery-db
+npx wrangler d1 info site-db
 ```
 
 This should output information about the database:
 ```
 Database Details
-- Name: vfa-gallery-db
+- Name: site-db
 - ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
@@ -236,25 +236,25 @@ The command should start without D1-related errors. The database binding is now 
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/migrations/` - Migrations directory
-- `/vfa-gallery/migrations/0000_initial.sql` - Initial migration file
-- `/vfa-gallery/docs/MIGRATIONS-GUIDE.md` - Migration documentation
+- `/site/migrations/` - Migrations directory
+- `/site/migrations/0000_initial.sql` - Initial migration file
+- `/site/docs/MIGRATIONS-GUIDE.md` - Migration documentation
 
 **Modified:**
-- `/vfa-gallery/wrangler.toml` - Added `[[d1_databases]]` binding section and environment configs
+- `/site/wrangler.toml` - Added `[[d1_databases]]` binding section and environment configs
 
 ---
 
 ## Verification Checklist
 
-- [ ] `npx wrangler d1 create vfa-gallery-db` completes and outputs database ID
+- [ ] `npx wrangler d1 create site-db` completes and outputs database ID
 - [ ] Database ID is added to `wrangler.toml` in all three sections (root, production, preview)
 - [ ] `migrations/` directory exists
 - [ ] `migrations/0000_initial.sql` file exists with SQL comment
-- [ ] `npx wrangler d1 migrations list vfa-gallery-db` shows the initial migration
-- [ ] `npx wrangler d1 execute vfa-gallery-db --file migrations/0000_initial.sql --local` succeeds
-- [ ] `npx wrangler d1 info vfa-gallery-db` outputs database details
+- [ ] `npx wrangler d1 migrations list site-db` shows the initial migration
+- [ ] `npx wrangler d1 execute site-db --file migrations/0000_initial.sql --local` succeeds
+- [ ] `npx wrangler d1 info site-db` outputs database details
 - [ ] `npx wrangler pages dev dist/ --local` starts without D1 errors
-- [ ] `/vfa-gallery/docs/MIGRATIONS-GUIDE.md` exists
+- [ ] `/site/docs/MIGRATIONS-GUIDE.md` exists
 
 Once all items checked, proceed to **05-R2-BUCKET-INIT.md**.

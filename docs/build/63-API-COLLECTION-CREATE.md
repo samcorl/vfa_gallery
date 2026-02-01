@@ -635,7 +635,7 @@ Expected response (409):
 Query the database directly:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collections WHERE name='Dragon Series' LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM collections WHERE name='Dragon Series' LIMIT 1;"
 ```
 
 Confirm: All fields are populated correctly with appropriate defaults (is_default=0, status='active')

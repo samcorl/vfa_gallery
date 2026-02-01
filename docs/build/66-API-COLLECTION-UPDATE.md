@@ -677,7 +677,7 @@ Expected: Name is updated, but is_default remains unchanged
 ### Test 14: Verify Database Update
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collections WHERE id = 'col_test123';"
+wrangler d1 execute site --command="SELECT * FROM collections WHERE id = 'col_test123';"
 ```
 
 Expected: All fields match the response data, including updated_at timestamp

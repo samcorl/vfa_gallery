@@ -36,7 +36,7 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Update Gemfile
 
-Already added in previous scripts, but verify `/vfa-gallery/Gemfile`:
+Already added in previous scripts, but verify `/site/Gemfile`:
 
 ```ruby
 source 'https://rubygems.org'
@@ -51,7 +51,7 @@ gem 'dotenv', '~> 2.8'
 
 ### Step 2: Create Orphan Cleanup Script
 
-Create `/vfa-gallery/scripts/cleanup_orphans.rb`:
+Create `/site/scripts/cleanup_orphans.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -68,7 +68,7 @@ class Config
   attr_reader :db_path, :orphan_days, :dry_run, :delete_r2_files, :cleanup_mode, :remote, :verbose
 
   def initialize
-    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/vfa-gallery-db.sqlite3', __dir__)
+    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/site-db.sqlite3', __dir__)
     @orphan_days = 30
     @dry_run = true
     @delete_r2_files = false
@@ -425,7 +425,7 @@ class OrphanCleanupApp
   def initialize(config)
     @config = config
     @db = if @config.remote
-            D1RemoteOrphanDatabase.new('vfa-gallery-db')
+            D1RemoteOrphanDatabase.new('site-db')
           else
             OrphanDatabase.new(@config.db_path)
           end
@@ -541,12 +541,12 @@ end
 ### Step 3: Make Script Executable
 
 ```bash
-chmod +x /vfa-gallery/scripts/cleanup_orphans.rb
+chmod +x /site/scripts/cleanup_orphans.rb
 ```
 
 ### Step 4: Update Environment Configuration
 
-Update `/vfa-gallery/.env.backup`:
+Update `/site/.env.backup`:
 
 ```bash
 # D1 Configuration
@@ -557,12 +557,12 @@ R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
-R2_BUCKET_NAME=vfa-gallery
+R2_BUCKET_NAME=site
 ```
 
 ### Step 5: Add Documentation
 
-Update `/vfa-gallery/docs/ADMIN-SCRIPTS.md`:
+Update `/site/docs/ADMIN-SCRIPTS.md`:
 
 ```markdown
 ## Orphan Cleanup Script
@@ -680,11 +680,11 @@ Default N = 30 days. Override with `--days` flag.
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/cleanup_orphans.rb` - Orphan cleanup script (executable)
+- `/site/scripts/cleanup_orphans.rb` - Orphan cleanup script (executable)
 
 **Modified:**
-- `/vfa-gallery/docs/ADMIN-SCRIPTS.md` - Add cleanup documentation
-- `/vfa-gallery/.env.backup` - Add R2 configuration notes
+- `/site/docs/ADMIN-SCRIPTS.md` - Add cleanup documentation
+- `/site/.env.backup` - Add R2 configuration notes
 
 ---
 

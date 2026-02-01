@@ -41,7 +41,7 @@ const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT || ''
 });
 
-const BUCKET = process.env.BUCKET || 'vfa-gallery-prod';
+const BUCKET = process.env.BUCKET || 'site-prod';
 
 export interface WatermarkProcessRequest {
   originalKey: string;
@@ -434,7 +434,7 @@ const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT || ''
 });
 
-const BUCKET = process.env.BUCKET || 'vfa-gallery-prod';
+const BUCKET = process.env.BUCKET || 'site-prod';
 
 function calculateFontSize(imageWidth: number): number {
   const calculatedSize = Math.max(24, Math.floor(imageWidth / 20));

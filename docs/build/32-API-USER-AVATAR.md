@@ -19,7 +19,7 @@ Create the `POST /api/users/me/avatar` endpoint that accepts image uploads, stor
   "id": "uuid",
   "username": "sam-corl",
   "displayName": "Sam Corl",
-  "avatarUrl": "https://vfa-gallery.r2.dev/avatars/user-uuid/file-uuid.jpeg",
+  "avatarUrl": "https://site.r2.dev/avatars/user-uuid/file-uuid.jpeg",
   "email": "sam@example.com",
   "bio": "Artist and designer",
   "website": "https://samcorl.com",
@@ -120,7 +120,7 @@ export async function uploadToR2(
 export async function deleteFromR2(bucket: R2Bucket, fileUrl: string): Promise<boolean> {
   try {
     // Extract filename from URL
-    // Example: https://vfa-gallery.r2.dev/avatars/user-id/file-uuid.jpeg
+    // Example: https://site.r2.dev/avatars/user-id/file-uuid.jpeg
     const urlParts = fileUrl.split('/');
     const filename = urlParts.slice(-3).join('/'); // Get avatars/user-id/file-uuid.jpeg
 
@@ -325,7 +325,7 @@ app.post('/', withAuth, async (c) => {
 
     const db = c.env.DB;
     const bucket = c.env.BUCKET;
-    const baseUrl = c.env.R2_PUBLIC_URL || 'https://vfa-gallery.r2.dev';
+    const baseUrl = c.env.R2_PUBLIC_URL || 'https://site.r2.dev';
 
     // Get current user to retrieve old avatar
     const currentUser = await getUserById(db, authUser.userId);
@@ -386,7 +386,7 @@ If not present, add to wrangler.toml:
 
 ```toml
 [env.production]
-vars = { R2_PUBLIC_URL = "https://vfa-gallery.r2.dev" }
+vars = { R2_PUBLIC_URL = "https://site.r2.dev" }
 
 [env.development]
 vars = { R2_PUBLIC_URL = "http://localhost:8788" }
@@ -520,7 +520,7 @@ curl -X POST http://localhost:8787/api/users/me/avatar \
   -F "file=@/path/to/image.jpeg" | jq '.avatarUrl'
 ```
 
-Expected: URL matching pattern `https://vfa-gallery.r2.dev/avatars/{userId}/{uuid}.jpeg`
+Expected: URL matching pattern `https://site.r2.dev/avatars/{userId}/{uuid}.jpeg`
 
 ### Test 9: Each Upload Creates Unique Filename
 

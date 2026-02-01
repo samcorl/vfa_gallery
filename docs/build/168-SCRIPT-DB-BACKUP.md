@@ -34,7 +34,7 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Add Required Gems
 
-Update `/vfa-gallery/Gemfile`:
+Update `/site/Gemfile`:
 
 ```ruby
 source 'https://rubygems.org'
@@ -50,13 +50,13 @@ gem 'dotenv', '~> 2.8'
 Run:
 
 ```bash
-cd /vfa-gallery
+cd /site
 bundle install
 ```
 
 ### Step 2: Create Backup Script
 
-Create `/vfa-gallery/scripts/backup.rb`:
+Create `/site/scripts/backup.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -73,10 +73,10 @@ class Config
   attr_reader :db_path, :backup_dir, :r2_upload, :r2_bucket, :r2_key_prefix, :remote
 
   def initialize
-    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/vfa-gallery-db.sqlite3', __dir__)
+    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/site-db.sqlite3', __dir__)
     @backup_dir = File.expand_path('../backups', __dir__)
     @r2_upload = false
-    @r2_bucket = ENV['R2_BUCKET_NAME'] || 'vfa-gallery-backups'
+    @r2_bucket = ENV['R2_BUCKET_NAME'] || 'site-backups'
     @r2_key_prefix = 'db-backups/'
     @remote = false
 
@@ -95,7 +95,7 @@ class Config
         @r2_upload = true
       end
 
-      opts.on('--r2-bucket BUCKET', 'R2 bucket name (default: vfa-gallery-backups)') do |bucket|
+      opts.on('--r2-bucket BUCKET', 'R2 bucket name (default: site-backups)') do |bucket|
         @r2_bucket = bucket
       end
 
@@ -150,7 +150,7 @@ class DatabaseBackup
     raise "Failed to backup database: #{e.message}"
   end
 
-  def backup_remote(output_file, database_name = 'vfa-gallery-db')
+  def backup_remote(output_file, database_name = 'site-db')
     # Use wrangler to dump remote database
     cmd = "npx wrangler d1 execute #{database_name} '.dump' --remote"
 
@@ -328,9 +328,9 @@ class BackupApp
     # Generate timestamped filename
     timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
     filename = if @config.remote
-                 "vfa-gallery-remote_#{timestamp}.sql"
+                 "site-remote_#{timestamp}.sql"
                else
-                 "vfa-gallery-local_#{timestamp}.sql"
+                 "site-local_#{timestamp}.sql"
                end
     backup_file = File.join(@config.backup_dir, filename)
 
@@ -393,12 +393,12 @@ end
 ### Step 3: Make Script Executable
 
 ```bash
-chmod +x /vfa-gallery/scripts/backup.rb
+chmod +x /site/scripts/backup.rb
 ```
 
 ### Step 4: Create Environment File
 
-Create `/vfa-gallery/.env.backup` (for local development):
+Create `/site/.env.backup` (for local development):
 
 ```bash
 # D1 Database path (auto-detected if not set)
@@ -409,24 +409,24 @@ R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
-R2_BUCKET_NAME=vfa-gallery-backups
+R2_BUCKET_NAME=site-backups
 ```
 
 Add to `.gitignore`:
 
 ```bash
-echo ".env.backup" >> /vfa-gallery/.gitignore
+echo ".env.backup" >> /site/.gitignore
 ```
 
 ### Step 5: Create Backup Directory
 
 ```bash
-mkdir -p /vfa-gallery/scripts/backups
+mkdir -p /site/scripts/backups
 ```
 
 ### Step 6: Create Cleanup Script
 
-Create `/vfa-gallery/scripts/cleanup_old_backups.rb`:
+Create `/site/scripts/cleanup_old_backups.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -480,7 +480,7 @@ puts "Cleanup complete. Retained: #{(backup_files.length - deleted_by_age).clamp
 
 ### Step 7: Add Documentation
 
-Update `/vfa-gallery/docs/ADMIN-SCRIPTS.md`:
+Update `/site/docs/ADMIN-SCRIPTS.md`:
 
 ```markdown
 ## Database Backup Script
@@ -526,14 +526,14 @@ R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
-R2_BUCKET_NAME=vfa-gallery-backups
+R2_BUCKET_NAME=site-backups
 ```
 
 ### Backup Location
 
 Local backups are stored in `/scripts/backups/` with naming convention:
-- Local: `vfa-gallery-local_YYYYMMDD_HHMMSS.sql`
-- Remote: `vfa-gallery-remote_YYYYMMDD_HHMMSS.sql`
+- Local: `site-local_YYYYMMDD_HHMMSS.sql`
+- Remote: `site-remote_YYYYMMDD_HHMMSS.sql`
 
 A `MANIFEST.json` file tracks all backups with metadata.
 
@@ -541,10 +541,10 @@ A `MANIFEST.json` file tracks all backups with metadata.
 
 ```bash
 # Restore local backup
-sqlite3 /path/to/db.sqlite3 < scripts/backups/vfa-gallery-local_20240115_120000.sql
+sqlite3 /path/to/db.sqlite3 < scripts/backups/site-local_20240115_120000.sql
 
 # Restore to remote D1
-npx wrangler d1 execute vfa-gallery-db --file scripts/backups/vfa-gallery-remote_20240115_120000.sql --remote
+npx wrangler d1 execute site-db --file scripts/backups/site-remote_20240115_120000.sql --remote
 ```
 
 ### Cleanup Old Backups
@@ -565,10 +565,10 @@ Add to cron for automatic backups:
 
 ```bash
 # Daily at 2 AM, keep 7 days
-0 2 * * * cd /vfa-gallery && ruby scripts/backup.rb --r2-upload > /tmp/backup.log 2>&1
+0 2 * * * cd /site && ruby scripts/backup.rb --r2-upload > /tmp/backup.log 2>&1
 
 # Weekly cleanup (Sundays at 3 AM)
-0 3 * * 0 cd /vfa-gallery && ruby scripts/cleanup_old_backups.rb BACKUP_RETENTION_DAYS=7
+0 3 * * 0 cd /site && ruby scripts/cleanup_old_backups.rb BACKUP_RETENTION_DAYS=7
 ```
 ```
 
@@ -577,15 +577,15 @@ Add to cron for automatic backups:
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/backup.rb` - Database backup script (executable)
-- `/vfa-gallery/scripts/cleanup_old_backups.rb` - Backup cleanup script (executable)
-- `/vfa-gallery/.env.backup` - Environment configuration template
-- `/vfa-gallery/scripts/backups/` - Backup storage directory
-- `/vfa-gallery/docs/ADMIN-SCRIPTS.md` - Updated with backup docs
+- `/site/scripts/backup.rb` - Database backup script (executable)
+- `/site/scripts/cleanup_old_backups.rb` - Backup cleanup script (executable)
+- `/site/.env.backup` - Environment configuration template
+- `/site/scripts/backups/` - Backup storage directory
+- `/site/docs/ADMIN-SCRIPTS.md` - Updated with backup docs
 
 **Modified:**
-- `/vfa-gallery/Gemfile` - Added aws-sdk-s3, dotenv
-- `/vfa-gallery/.gitignore` - Added .env.backup, scripts/backups/*
+- `/site/Gemfile` - Added aws-sdk-s3, dotenv
+- `/site/.gitignore` - Added .env.backup, scripts/backups/*
 
 ---
 

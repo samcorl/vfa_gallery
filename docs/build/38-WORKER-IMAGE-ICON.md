@@ -38,7 +38,7 @@ const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT || ''
 });
 
-const BUCKET = process.env.BUCKET || 'vfa-gallery-prod';
+const BUCKET = process.env.BUCKET || 'site-prod';
 const ICON_SIZE = 100;
 
 export interface IconProcessRequest {
@@ -362,7 +362,7 @@ const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT || ''
 });
 
-const BUCKET = process.env.BUCKET || 'vfa-gallery-prod';
+const BUCKET = process.env.BUCKET || 'site-prod';
 const ICON_SIZE = 100;
 
 /**

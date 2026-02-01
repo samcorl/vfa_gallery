@@ -796,7 +796,7 @@ Expected response (400):
 Verify group and creator as owner were created:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM groups ORDER BY created_at DESC LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM groups ORDER BY created_at DESC LIMIT 1;"
 ```
 
 Expected: Shows the created group with all fields.
@@ -804,7 +804,7 @@ Expected: Shows the created group with all fields.
 Verify creator is owner:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM group_members WHERE role='owner' ORDER BY joined_at DESC LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM group_members WHERE role='owner' ORDER BY joined_at DESC LIMIT 1;"
 ```
 
 Expected: Shows creator user in owner role.

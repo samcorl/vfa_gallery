@@ -342,7 +342,7 @@ curl -X POST http://localhost:8787/api/artworks \
 ### Test 3: Verify activity logging
 ```bash
 # Query the activity log
-wrangler d1 execute vfa-gallery --command="SELECT * FROM activity_log WHERE action = 'artwork_created' ORDER BY created_at DESC LIMIT 5;"
+wrangler d1 execute site --command="SELECT * FROM activity_log WHERE action = 'artwork_created' ORDER BY created_at DESC LIMIT 5;"
 
 # Should show recent artwork_created entries with proper user_id, entity_id, ip_address, user_agent
 ```

@@ -633,7 +633,7 @@ curl -X POST http://localhost:8787/auth/signup \
   -d '{"email":"test@example.com","username":"testuser","password":"password"}'
 
 # Query activity logs
-wrangler d1 execute vfa-gallery --command="SELECT * FROM activity_log WHERE action = 'user_signup' ORDER BY created_at DESC LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM activity_log WHERE action = 'user_signup' ORDER BY created_at DESC LIMIT 1;"
 
 # Should see entry with:
 # - user_id: [user id]
@@ -653,7 +653,7 @@ curl -X POST http://localhost:8787/api/artworks \
   -d '{"title":"Test","description":"Test artwork"}'
 
 # Query logs
-wrangler d1 execute vfa-gallery --command="SELECT * FROM activity_log WHERE action = 'artwork_created' ORDER BY created_at DESC LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM activity_log WHERE action = 'artwork_created' ORDER BY created_at DESC LIMIT 1;"
 
 # Should see entry with:
 # - action: artwork_created

@@ -125,7 +125,7 @@ const s3Client = new S3Client({
   endpoint: process.env.R2_ENDPOINT || ''
 });
 
-const BUCKET = process.env.BUCKET || 'vfa-gallery-prod';
+const BUCKET = process.env.BUCKET || 'site-prod';
 
 // Allowed MIME types for uploads
 const ALLOWED_CONTENT_TYPES = [
@@ -203,7 +203,7 @@ Add these variables:
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_ACCESS_KEY_ID=your_access_key_here
 R2_SECRET_ACCESS_KEY=your_secret_key_here
-BUCKET=vfa-gallery-prod
+BUCKET=site-prod
 ```
 
 ### 5. Update package.json Dependencies

@@ -562,7 +562,7 @@ Expected second response (409):
 After adding a role, verify it was stored:
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="SELECT * FROM gallery_roles WHERE gallery_id = '{galleryId}' ORDER BY granted_at DESC;"
 ```
 

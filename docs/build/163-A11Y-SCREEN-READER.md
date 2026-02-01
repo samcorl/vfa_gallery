@@ -26,7 +26,7 @@ From **04-UI-UX-SPEC.md**:
 
 ### Step 1: Audit Current HTML Structure
 
-Before implementing screen reader support, audit your component files in `/vfa-gallery/src/`:
+Before implementing screen reader support, audit your component files in `/site/src/`:
 
 ```bash
 grep -r "<div\|<span" src/ | grep -i "button\|link\|nav\|menu" | head -20
@@ -38,7 +38,7 @@ This identifies non-semantic HTML that should be replaced with semantic elements
 
 Replace generic `<div>` and `<span>` elements with semantic alternatives. In all layout components:
 
-Edit `/vfa-gallery/src/components/Layout/Header.tsx`:
+Edit `/site/src/components/Layout/Header.tsx`:
 ```tsx
 // Before (BAD)
 <div className="header">
@@ -64,14 +64,14 @@ Edit `/vfa-gallery/src/components/Layout/Header.tsx`:
 </header>
 ```
 
-Edit `/vfa-gallery/src/components/Layout/Main.tsx`:
+Edit `/site/src/components/Layout/Main.tsx`:
 ```tsx
 <main className="main-content flex-1 p-4 sm:p-6 lg:p-8">
   {children}
 </main>
 ```
 
-Edit `/vfa-gallery/src/components/Layout/Sidebar.tsx`:
+Edit `/site/src/components/Layout/Sidebar.tsx`:
 ```tsx
 <aside className="sidebar w-64 bg-gray-100" aria-label="Sidebar navigation">
   <nav className="p-4">
@@ -80,7 +80,7 @@ Edit `/vfa-gallery/src/components/Layout/Sidebar.tsx`:
 </aside>
 ```
 
-Edit `/vfa-gallery/src/components/Layout/Footer.tsx`:
+Edit `/site/src/components/Layout/Footer.tsx`:
 ```tsx
 <footer className="footer bg-gray-900 text-white py-8 px-6 mt-16">
   <article className="max-w-6xl mx-auto">
@@ -93,7 +93,7 @@ Edit `/vfa-gallery/src/components/Layout/Footer.tsx`:
 
 ### Step 3: Add ARIA Labels to Icon Buttons
 
-In `/vfa-gallery/src/components/UI/IconButton.tsx`, create a reusable component:
+In `/site/src/components/UI/IconButton.tsx`, create a reusable component:
 
 ```tsx
 import React from 'react';
@@ -146,7 +146,7 @@ Usage in components:
 
 ### Step 4: Add ARIA Labels to Images
 
-In `/vfa-gallery/src/components/Gallery/ArtworkCard.tsx`:
+In `/site/src/components/Gallery/ArtworkCard.tsx`:
 
 ```tsx
 interface ArtworkCardProps {
@@ -193,7 +193,7 @@ For decorative images (use `alt=""` and `aria-hidden="true"`):
 
 ### Step 5: Implement aria-live Regions for Dynamic Content
 
-In `/vfa-gallery/src/components/UI/Toast.tsx`:
+In `/site/src/components/UI/Toast.tsx`:
 
 ```tsx
 interface ToastProps {
@@ -232,7 +232,7 @@ export function Toast({ message, type, isVisible }: ToastProps) {
 }
 ```
 
-In `/vfa-gallery/src/components/UI/LoadingSpinner.tsx`:
+In `/site/src/components/UI/LoadingSpinner.tsx`:
 
 ```tsx
 export function LoadingSpinner() {
@@ -249,7 +249,7 @@ export function LoadingSpinner() {
 }
 ```
 
-In `/vfa-gallery/src/components/Search/SearchResults.tsx`:
+In `/site/src/components/Search/SearchResults.tsx`:
 
 ```tsx
 interface SearchResultsProps {
@@ -286,7 +286,7 @@ export function SearchResults({ results, isLoading, query }: SearchResultsProps)
 
 ### Step 6: Create sr-only CSS Class
 
-In `/vfa-gallery/src/index.css`, add the sr-only utility class:
+In `/site/src/index.css`, add the sr-only utility class:
 
 ```css
 /* Screen reader only class - visually hidden but accessible */
@@ -303,7 +303,7 @@ In `/vfa-gallery/src/index.css`, add the sr-only utility class:
 }
 ```
 
-Or add to Tailwind config in `/vfa-gallery/tailwind.config.js`:
+Or add to Tailwind config in `/site/tailwind.config.js`:
 
 ```javascript
 export default {
@@ -336,7 +336,7 @@ export default {
 
 In components with icon-only buttons or unclear labels, add hidden text for screen readers:
 
-In `/vfa-gallery/src/components/UI/IconButton.tsx`:
+In `/site/src/components/UI/IconButton.tsx`:
 ```tsx
 export function IconButton({
   icon,
@@ -357,7 +357,7 @@ export function IconButton({
 }
 ```
 
-In `/vfa-gallery/src/components/Gallery/GalleryGrid.tsx`:
+In `/site/src/components/Gallery/GalleryGrid.tsx`:
 ```tsx
 <div className="gallery-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   <h2 className="sr-only">Gallery Collection</h2>
@@ -371,7 +371,7 @@ In `/vfa-gallery/src/components/Gallery/GalleryGrid.tsx`:
 
 Review all components and ensure proper heading hierarchy (h1 → h2 → h3, etc., no skipping levels):
 
-In `/vfa-gallery/src/pages/GalleryPage.tsx`:
+In `/site/src/pages/GalleryPage.tsx`:
 ```tsx
 export function GalleryPage() {
   return (
@@ -419,7 +419,7 @@ Test with VoiceOver on macOS:
 
 ### Step 10: Add ARIA Labels to Form Controls
 
-In `/vfa-gallery/src/components/Forms/SearchForm.tsx`:
+In `/site/src/components/Forms/SearchForm.tsx`:
 
 ```tsx
 export function SearchForm() {
@@ -459,20 +459,20 @@ export function SearchForm() {
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/src/components/UI/IconButton.tsx` - Reusable icon button with ARIA labels
-- `/vfa-gallery/src/components/UI/Toast.tsx` - Toast notifications with aria-live
-- `/vfa-gallery/src/components/UI/LoadingSpinner.tsx` - Loading spinner with role and aria-label
+- `/site/src/components/UI/IconButton.tsx` - Reusable icon button with ARIA labels
+- `/site/src/components/UI/Toast.tsx` - Toast notifications with aria-live
+- `/site/src/components/UI/LoadingSpinner.tsx` - Loading spinner with role and aria-label
 
 **Modified:**
-- `/vfa-gallery/src/components/Layout/Header.tsx` - Use `<header>` and `<nav>` with aria-label
-- `/vfa-gallery/src/components/Layout/Main.tsx` - Use `<main>` semantic element
-- `/vfa-gallery/src/components/Layout/Sidebar.tsx` - Use `<aside>` with aria-label
-- `/vfa-gallery/src/components/Layout/Footer.tsx` - Use `<footer>` and `<article>`
-- `/vfa-gallery/src/components/Gallery/ArtworkCard.tsx` - Add proper alt text to images
-- `/vfa-gallery/src/components/Search/SearchResults.tsx` - Add role and aria-live
-- `/vfa-gallery/src/components/Forms/SearchForm.tsx` - Associate labels with inputs
-- `/vfa-gallery/src/index.css` - Add sr-only class
-- `/vfa-gallery/tailwind.config.js` - Add sr-only utility (if not in index.css)
+- `/site/src/components/Layout/Header.tsx` - Use `<header>` and `<nav>` with aria-label
+- `/site/src/components/Layout/Main.tsx` - Use `<main>` semantic element
+- `/site/src/components/Layout/Sidebar.tsx` - Use `<aside>` with aria-label
+- `/site/src/components/Layout/Footer.tsx` - Use `<footer>` and `<article>`
+- `/site/src/components/Gallery/ArtworkCard.tsx` - Add proper alt text to images
+- `/site/src/components/Search/SearchResults.tsx` - Add role and aria-live
+- `/site/src/components/Forms/SearchForm.tsx` - Associate labels with inputs
+- `/site/src/index.css` - Add sr-only class
+- `/site/tailwind.config.js` - Add sr-only utility (if not in index.css)
 
 ---
 

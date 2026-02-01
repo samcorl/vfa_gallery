@@ -258,7 +258,7 @@ Run the migration:
 
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 execute vfa-gallery --file ./migrations/gallery_roles.sql
+wrangler d1 execute site --file ./migrations/gallery_roles.sql
 ```
 
 ---
@@ -319,7 +319,7 @@ Expected: No type errors
 ### Test 2: Run Database Migration
 
 ```bash
-wrangler d1 execute vfa-gallery --file ./migrations/gallery_roles.sql
+wrangler d1 execute site --file ./migrations/gallery_roles.sql
 ```
 
 Expected: Migration completes without errors
@@ -329,7 +329,7 @@ Expected: Migration completes without errors
 ### Test 3: Verify Table Structure
 
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(gallery_roles);"
+wrangler d1 execute site --command="PRAGMA table_info(gallery_roles);"
 ```
 
 Expected output shows columns:
@@ -423,7 +423,7 @@ Expected response (200):
 Verify creator role was created in database:
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="SELECT * FROM gallery_roles WHERE gallery_id = '{GALLERY_ID}';"
 ```
 

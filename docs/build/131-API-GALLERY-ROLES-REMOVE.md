@@ -295,7 +295,7 @@ Expected response (404):
 After deleting a role, verify it's removed from database:
 
 ```bash
-wrangler d1 execute vfa-gallery \
+wrangler d1 execute site \
   --command="SELECT * FROM gallery_roles WHERE gallery_id = '{galleryId}' AND user_id = '{targetUserId}';"
 ```
 

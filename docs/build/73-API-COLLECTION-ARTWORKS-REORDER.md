@@ -380,24 +380,24 @@ Create test collection with multiple artworks:
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
 
 # Create test user, gallery, collection (from previous builds if not exists)
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-73', 'test73@example.com', 'testuser73');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-73', 'user-73', 'test-gallery-73', 'Test Gallery 73');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-73', 'gal-73', 'reorder-test', 'Reorder Test');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-73', 'test73@example.com', 'testuser73');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-73', 'user-73', 'test-gallery-73', 'Test Gallery 73');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-73', 'gal-73', 'reorder-test', 'Reorder Test');"
 
 # Create test artworks
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-1', 'user-73', 'First', 'first', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-2', 'user-73', 'Second', 'second', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-3', 'user-73', 'Third', 'third', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-4', 'user-73', 'Fourth', 'fourth', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-1', 'user-73', 'First', 'first', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-2', 'user-73', 'Second', 'second', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-3', 'user-73', 'Third', 'third', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-73-4', 'user-73', 'Fourth', 'fourth', 'active');"
 
 # Add artworks to collection (in order 1, 2, 3, 4)
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-1', 'col-73', 'art-73-1', 0);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-2', 'col-73', 'art-73-2', 1);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-3', 'col-73', 'art-73-3', 2);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-4', 'col-73', 'art-73-4', 3);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-1', 'col-73', 'art-73-1', 0);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-2', 'col-73', 'art-73-2', 1);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-3', 'col-73', 'art-73-3', 2);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-73-4', 'col-73', 'art-73-4', 3);"
 
 # Verify initial order
-wrangler d1 execute vfa-gallery --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
+wrangler d1 execute site --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
 ```
 
 Expected output: art-73-1 (pos 0), art-73-2 (pos 1), art-73-3 (pos 2), art-73-4 (pos 3)
@@ -457,7 +457,7 @@ curl -X PATCH http://localhost:8787/api/collections/col-73/artworks/reorder \
 Check positions in database:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
+wrangler d1 execute site --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
 ```
 
 Expected output: art-73-4 (pos 0), art-73-3 (pos 1), art-73-2 (pos 2), art-73-1 (pos 3)
@@ -520,8 +520,8 @@ Include an artwork that's not in the collection:
 
 ```bash
 # Create artwork in different user's library
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-74', 'test74@example.com', 'testuser74');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74', 'user-74', 'Other', 'other', 'active');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-74', 'test74@example.com', 'testuser74');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74', 'user-74', 'Other', 'other', 'active');"
 
 curl -X PATCH http://localhost:8787/api/collections/col-73/artworks/reorder \
   -H "Content-Type: application/json" \
@@ -604,12 +604,12 @@ Try reordering collection owned by different user:
 
 ```bash
 # Create another user's collection with artworks
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-74', 'user-74', 'gal-74', 'Gallery 74');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-74', 'gal-74', 'col-74', 'Collection 74');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74-a', 'user-74', 'Art A', 'art-a', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74-b', 'user-74', 'Art B', 'art-b', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-74-1', 'col-74', 'art-74-a', 0);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-74-2', 'col-74', 'art-74-b', 1);"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-74', 'user-74', 'gal-74', 'Gallery 74');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-74', 'gal-74', 'col-74', 'Collection 74');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74-a', 'user-74', 'Art A', 'art-a', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-74-b', 'user-74', 'Art B', 'art-b', 'active');"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-74-1', 'col-74', 'art-74-a', 0);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-74-2', 'col-74', 'art-74-b', 1);"
 
 curl -X PATCH http://localhost:8787/api/collections/col-74/artworks/reorder \
   -H "Content-Type: application/json" \
@@ -650,7 +650,7 @@ curl -X PATCH http://localhost:8787/api/collections/col-73/artworks/reorder \
 Verify collection updated_at changes:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT updated_at FROM collections WHERE id='col-73';"
+wrangler d1 execute site --command="SELECT updated_at FROM collections WHERE id='col-73';"
 ```
 
 Expected: updated_at is recent.
@@ -661,7 +661,7 @@ Try reordering empty collection:
 
 ```bash
 # Create empty collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-empty-73', 'gal-73', 'empty', 'Empty');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-empty-73', 'gal-73', 'empty', 'Empty');"
 
 curl -X PATCH http://localhost:8787/api/collections/col-empty-73/artworks/reorder \
   -H "Content-Type: application/json" \

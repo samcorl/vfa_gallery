@@ -531,7 +531,7 @@ Drag first artwork to third position:
 Check collection_artworks positions after reorder:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
+wrangler d1 execute site --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-73' ORDER BY position;"
 ```
 
 Expected: Positions match new order (0, 1, 2, 3...).

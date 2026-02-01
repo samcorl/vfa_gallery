@@ -49,7 +49,7 @@ CREATE TABLE users (
 ### Step 1: Verify Wrangler Configuration
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 info vfa-gallery
+wrangler d1 info site
 ```
 
 Expected output: Shows database ID and name. If error, complete Build 04 first.
@@ -90,14 +90,14 @@ CREATE TABLE users (
 
 ### Step 4: Execute Migration
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0001_create_users.sql
+wrangler d1 execute site --file=migrations/0001_create_users.sql
 ```
 
 Expected output: Success message indicating the migration was applied.
 
 ### Step 5: Verify Table Creation
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT sql FROM sqlite_master WHERE type='table' AND name='users';"
+wrangler d1 execute site --command="SELECT sql FROM sqlite_master WHERE type='table' AND name='users';"
 ```
 
 Expected output: Shows the CREATE TABLE statement confirming the table exists.
@@ -111,33 +111,33 @@ Expected output: Shows the CREATE TABLE statement confirming the table exists.
 
 ### Test 1: Table Exists
 ```bash
-wrangler d1 execute vfa-gallery --command=".tables"
+wrangler d1 execute site --command=".tables"
 ```
 Confirm: `users` table appears in the output.
 
 ### Test 2: Schema Matches
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(users);"
+wrangler d1 execute site --command="PRAGMA table_info(users);"
 ```
 Confirm: All columns appear with correct types (TEXT, INTEGER).
 
 ### Test 3: Unique Constraints Work
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('1', 'test@example.com', 'testuser');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('2', 'test@example.com', 'otheruser');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('1', 'test@example.com', 'testuser');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('2', 'test@example.com', 'otheruser');"
 ```
 Confirm: Second insert fails with UNIQUE constraint error on email.
 
 ### Test 4: Defaults Work
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('3', 'default@example.com', 'defaultuser');"
-wrangler d1 execute vfa-gallery --command="SELECT status, role FROM users WHERE id='3';"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('3', 'default@example.com', 'defaultuser');"
+wrangler d1 execute site --command="SELECT status, role FROM users WHERE id='3';"
 ```
 Confirm: Returns `status='pending'` and `role='user'`.
 
 ### Test 5: Timestamps Work
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT created_at FROM users WHERE id='3';"
+wrangler d1 execute site --command="SELECT created_at FROM users WHERE id='3';"
 ```
 Confirm: Returns ISO 8601 timestamp (e.g., `2026-01-18T...`).
 
@@ -156,7 +156,7 @@ DROP TABLE IF EXISTS users;
 
 Then execute:
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0002_rollback_users.sql
+wrangler d1 execute site --file=migrations/0002_rollback_users.sql
 ```
 
 ## Success Criteria

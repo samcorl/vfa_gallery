@@ -54,7 +54,7 @@ CREATE INDEX idx_verification_tokens_expires_at ON verification_tokens(expires_a
 
 **Apply migration:**
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/[TIMESTAMP]_create_verification_tokens.sql
+wrangler d1 execute site --file=migrations/[TIMESTAMP]_create_verification_tokens.sql
 ```
 
 ### Step 2: Create Email Service Module
@@ -755,7 +755,7 @@ curl -X POST http://localhost:8787/auth/signup \
 ### Test 2: Verify email with token
 ```bash
 # Extract token from email or check database
-wrangler d1 execute vfa-gallery --command="SELECT token FROM verification_tokens WHERE user_id = '{userId}' LIMIT 1;"
+wrangler d1 execute site --command="SELECT token FROM verification_tokens WHERE user_id = '{userId}' LIMIT 1;"
 
 # Use token to verify
 curl -X POST http://localhost:8787/auth/email/verify \
@@ -763,7 +763,7 @@ curl -X POST http://localhost:8787/auth/email/verify \
   -d '{"token":"[token]"}'
 
 # Check user status changed
-wrangler d1 execute vfa-gallery --command="SELECT status, email_verified_at FROM users WHERE id = '{userId}';"
+wrangler d1 execute site --command="SELECT status, email_verified_at FROM users WHERE id = '{userId}';"
 
 # Should show status='active' and email_verified_at timestamp
 ```
@@ -822,7 +822,7 @@ curl -X POST http://localhost:8787/auth/email/resend-verification \
 ### Test 7: Token expiration
 ```bash
 # Get an old token (wait 24+ hours or manually update DB)
-wrangler d1 execute vfa-gallery --command="UPDATE verification_tokens SET expires_at = datetime('now', '-1 minute') WHERE user_id = '{userId}';"
+wrangler d1 execute site --command="UPDATE verification_tokens SET expires_at = datetime('now', '-1 minute') WHERE user_id = '{userId}';"
 
 # Try to verify with expired token
 curl -X POST http://localhost:8787/auth/email/verify \

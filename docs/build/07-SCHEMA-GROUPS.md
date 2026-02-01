@@ -50,7 +50,7 @@ CREATE TABLE group_members (
 ### Step 1: Verify Users Table Exists
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name='users';"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name='users';"
 ```
 
 Expected output: Shows `users` table name. If no output, complete Build 06 first.
@@ -91,14 +91,14 @@ CREATE TABLE group_members (
 
 ### Step 4: Execute Migration
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0002_create_groups.sql
+wrangler d1 execute site --file=migrations/0002_create_groups.sql
 ```
 
 Expected output: Success message indicating both tables were created.
 
 ### Step 5: Verify Table Creation
 ```bash
-wrangler d1 execute vfa-gallery --command=".tables"
+wrangler d1 execute site --command=".tables"
 ```
 
 Expected output: Now shows both `groups` and `group_members` tables.
@@ -112,25 +112,25 @@ Expected output: Now shows both `groups` and `group_members` tables.
 
 ### Test 1: Tables Exist
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name IN ('groups', 'group_members');"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name IN ('groups', 'group_members');"
 ```
 Confirm: Returns both table names.
 
 ### Test 2: Groups Schema Matches
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(groups);"
+wrangler d1 execute site --command="PRAGMA table_info(groups);"
 ```
 Confirm: All columns present: id, slug, name, website, email, phone, socials, logo_url, created_by, created_at, updated_at.
 
 ### Test 3: Group Members Schema Matches
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(group_members);"
+wrangler d1 execute site --command="PRAGMA table_info(group_members);"
 ```
 Confirm: All columns present: group_id, user_id, role, joined_at.
 
 ### Test 4: Foreign Key Constraint (created_by)
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-1', 'test-group', 'Test Group', 'nonexistent-user');"
+wrangler d1 execute site --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-1', 'test-group', 'Test Group', 'nonexistent-user');"
 ```
 Confirm: Insert fails with foreign key constraint error (or succeeds if FK constraints are not enforced by default in D1).
 
@@ -139,61 +139,61 @@ Note: D1 may require enabling foreign key constraints. If the insert succeeds, t
 ### Test 5: Foreign Key Constraint with Valid User
 First, create a test user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'creator@example.com', 'creator');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'creator@example.com', 'creator');"
 ```
 
 Then create a group with this user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-1', 'test-group', 'Test Group', 'user-1');"
+wrangler d1 execute site --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-1', 'test-group', 'Test Group', 'user-1');"
 ```
 Confirm: Insert succeeds.
 
 ### Test 6: Group Member Unique Constraint
 Add a member to the group:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-1', 'user-1');"
+wrangler d1 execute site --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-1', 'user-1');"
 ```
 
 Try adding the same member again:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-1', 'user-1');"
+wrangler d1 execute site --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-1', 'user-1');"
 ```
 Confirm: Second insert fails with PRIMARY KEY constraint error.
 
 ### Test 7: Group Member Defaults
 Check the inserted member:
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT role, joined_at FROM group_members WHERE group_id='grp-1' AND user_id='user-1';"
+wrangler d1 execute site --command="SELECT role, joined_at FROM group_members WHERE group_id='grp-1' AND user_id='user-1';"
 ```
 Confirm: Returns `role='member'` and a timestamp in `joined_at`.
 
 ### Test 8: Cascade Delete - User Deletion
 ```bash
-wrangler d1 execute vfa-gallery --command="DELETE FROM users WHERE id='user-1';"
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM group_members WHERE user_id='user-1';"
+wrangler d1 execute site --command="DELETE FROM users WHERE id='user-1';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM group_members WHERE user_id='user-1';"
 ```
 Confirm: Member records are deleted (count returns 0).
 
 ### Test 9: Cascade Delete - Group Deletion
 Create another group and add members:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-2', 'another@example.com', 'another');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-2', 'another-group', 'Another Group', 'user-2');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-2', 'user-2');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-2', 'another@example.com', 'another');"
+wrangler d1 execute site --command="INSERT INTO groups (id, slug, name, created_by) VALUES ('grp-2', 'another-group', 'Another Group', 'user-2');"
+wrangler d1 execute site --command="INSERT INTO group_members (group_id, user_id) VALUES ('grp-2', 'user-2');"
 ```
 
 Delete the group:
 ```bash
-wrangler d1 execute vfa-gallery --command="DELETE FROM groups WHERE id='grp-2';"
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM group_members WHERE group_id='grp-2';"
+wrangler d1 execute site --command="DELETE FROM groups WHERE id='grp-2';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM group_members WHERE group_id='grp-2';"
 ```
 Confirm: Member records are deleted (count returns 0).
 
 ### Test 10: Slug Uniqueness
 Try inserting two groups with the same slug:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO groups (id, slug, name) VALUES ('grp-3', 'unique-slug', 'First Group');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO groups (id, slug, name) VALUES ('grp-4', 'unique-slug', 'Second Group');"
+wrangler d1 execute site --command="INSERT INTO groups (id, slug, name) VALUES ('grp-3', 'unique-slug', 'First Group');"
+wrangler d1 execute site --command="INSERT INTO groups (id, slug, name) VALUES ('grp-4', 'unique-slug', 'Second Group');"
 ```
 Confirm: Second insert fails with UNIQUE constraint error.
 
@@ -213,7 +213,7 @@ DROP TABLE IF EXISTS groups;
 
 Then execute:
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0003_rollback_groups.sql
+wrangler d1 execute site --file=migrations/0003_rollback_groups.sql
 ```
 
 ## Success Criteria

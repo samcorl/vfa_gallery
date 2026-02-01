@@ -566,7 +566,7 @@ curl -X POST http://localhost:8788/api/collections/col_source/copy \
 # Response includes id of new collection: col_new123
 
 # Verify artworks are in new collection
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_new123';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_new123';"
 ```
 
 Expected: Artworks are copied to collection_artworks for new collection

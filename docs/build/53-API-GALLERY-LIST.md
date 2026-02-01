@@ -547,7 +547,7 @@ Expected: Only User B's galleries in response, different set from User A
 ### Test 12: Database Verification
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT g.id, g.name, g.user_id, COUNT(c.id) as collection_count FROM galleries g LEFT JOIN collections c ON c.gallery_id = g.id GROUP BY g.id;"
+wrangler d1 execute site --command="SELECT g.id, g.name, g.user_id, COUNT(c.id) as collection_count FROM galleries g LEFT JOIN collections c ON c.gallery_id = g.id GROUP BY g.id;"
 ```
 
 Expected: Shows all galleries with accurate collection counts

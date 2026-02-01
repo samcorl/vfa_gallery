@@ -43,7 +43,7 @@ CREATE TABLE galleries (
 ### Step 1: Verify Users Table Exists
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name='users';"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name='users';"
 ```
 
 Expected output: Shows `users` table name. If no output, complete Build 06 first.
@@ -77,14 +77,14 @@ CREATE TABLE galleries (
 
 ### Step 4: Execute Migration
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0003_create_galleries.sql
+wrangler d1 execute site --file=migrations/0003_create_galleries.sql
 ```
 
 Expected output: Success message indicating the table was created.
 
 ### Step 5: Verify Table Creation
 ```bash
-wrangler d1 execute vfa-gallery --command=".tables"
+wrangler d1 execute site --command=".tables"
 ```
 
 Expected output: Shows `galleries` table in the list.
@@ -98,19 +98,19 @@ Expected output: Shows `galleries` table in the list.
 
 ### Test 1: Table Exists
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT name FROM sqlite_master WHERE type='table' AND name='galleries';"
+wrangler d1 execute site --command="SELECT name FROM sqlite_master WHERE type='table' AND name='galleries';"
 ```
 Confirm: Returns `galleries` table name.
 
 ### Test 2: Schema Matches
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(galleries);"
+wrangler d1 execute site --command="PRAGMA table_info(galleries);"
 ```
 Confirm: All columns present: id, user_id, slug, name, description, welcome_message, theme_id, is_default, status, created_at, updated_at.
 
 ### Test 3: Column Types Correct
 ```bash
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(galleries);"
+wrangler d1 execute site --command="PRAGMA table_info(galleries);"
 ```
 Confirm:
 - `id`, `user_id`, `slug`, `name`, `description`, `welcome_message`, `theme_id`, `status`, `created_at`, `updated_at` are TEXT
@@ -119,76 +119,76 @@ Confirm:
 ### Test 4: Foreign Key Constraint
 First, create a test user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'gallery@example.com', 'galleryuser');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-1', 'gallery@example.com', 'galleryuser');"
 ```
 
 Create a gallery with this user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-1', 'user-1', 'main', 'Main Gallery');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-1', 'user-1', 'main', 'Main Gallery');"
 ```
 Confirm: Insert succeeds.
 
 ### Test 5: Composite Unique Constraint (Same User, Different Slug)
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-2', 'user-1', 'secondary', 'Secondary Gallery');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-2', 'user-1', 'secondary', 'Secondary Gallery');"
 ```
 Confirm: Insert succeeds (same user, different slug is allowed).
 
 ### Test 6: Composite Unique Constraint (Different User, Same Slug)
 Create another test user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-2', 'another@example.com', 'anotheruser');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-2', 'another@example.com', 'anotheruser');"
 ```
 
 Create a gallery with the same slug but different user:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-3', 'user-2', 'main', 'Another Main Gallery');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-3', 'user-2', 'main', 'Another Main Gallery');"
 ```
 Confirm: Insert succeeds (different users can have galleries with the same slug).
 
 ### Test 7: Composite Unique Constraint (Same User, Same Slug)
 Try creating another gallery for user-1 with slug 'main':
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-4', 'user-1', 'main', 'Duplicate Main Gallery');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-4', 'user-1', 'main', 'Duplicate Main Gallery');"
 ```
 Confirm: Insert fails with UNIQUE constraint error.
 
 ### Test 8: Default Values
 Check the gallery created in Test 4:
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT is_default, status, created_at FROM galleries WHERE id='gal-1';"
+wrangler d1 execute site --command="SELECT is_default, status, created_at FROM galleries WHERE id='gal-1';"
 ```
 Confirm: Returns `is_default=0`, `status='active'`, and a timestamp in `created_at`.
 
 ### Test 9: Boolean Field (is_default)
 Update the gallery to be the default:
 ```bash
-wrangler d1 execute vfa-gallery --command="UPDATE galleries SET is_default=1 WHERE id='gal-1';"
-wrangler d1 execute vfa-gallery --command="SELECT is_default FROM galleries WHERE id='gal-1';"
+wrangler d1 execute site --command="UPDATE galleries SET is_default=1 WHERE id='gal-1';"
+wrangler d1 execute site --command="SELECT is_default FROM galleries WHERE id='gal-1';"
 ```
 Confirm: Returns `is_default=1`.
 
 ### Test 10: Cascade Delete
 Delete the user:
 ```bash
-wrangler d1 execute vfa-gallery --command="DELETE FROM users WHERE id='user-1';"
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM galleries WHERE user_id='user-1';"
+wrangler d1 execute site --command="DELETE FROM users WHERE id='user-1';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM galleries WHERE user_id='user-1';"
 ```
 Confirm: All galleries for that user are deleted (count returns 0).
 
 ### Test 11: Theme and Description Fields
 Create a gallery with full details:
 ```bash
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name, description, welcome_message, theme_id, status) VALUES ('gal-5', 'user-2', 'portfolio', 'My Portfolio', 'A curated collection of my work', 'Welcome to my gallery!', 'theme-dark', 'active');"
-wrangler d1 execute vfa-gallery --command="SELECT description, welcome_message, theme_id FROM galleries WHERE id='gal-5';"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name, description, welcome_message, theme_id, status) VALUES ('gal-5', 'user-2', 'portfolio', 'My Portfolio', 'A curated collection of my work', 'Welcome to my gallery!', 'theme-dark', 'active');"
+wrangler d1 execute site --command="SELECT description, welcome_message, theme_id FROM galleries WHERE id='gal-5';"
 ```
 Confirm: All fields are stored and retrieved correctly.
 
 ### Test 12: Status Field Variations
 Update the status to archived:
 ```bash
-wrangler d1 execute vfa-gallery --command="UPDATE galleries SET status='archived' WHERE id='gal-5';"
-wrangler d1 execute vfa-gallery --command="SELECT status FROM galleries WHERE id='gal-5';"
+wrangler d1 execute site --command="UPDATE galleries SET status='archived' WHERE id='gal-5';"
+wrangler d1 execute site --command="SELECT status FROM galleries WHERE id='gal-5';"
 ```
 Confirm: Returns `status='archived'`.
 
@@ -207,7 +207,7 @@ DROP TABLE IF EXISTS galleries;
 
 Then execute:
 ```bash
-wrangler d1 execute vfa-gallery --file=migrations/0004_rollback_galleries.sql
+wrangler d1 execute site --file=migrations/0004_rollback_galleries.sql
 ```
 
 ## Success Criteria

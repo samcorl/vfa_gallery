@@ -553,7 +553,7 @@ Expected: Returns only artworks with status='active'.
 First, add an artwork to a collection:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="
+wrangler d1 execute site --command="
 INSERT INTO collection_artworks (collection_id, artwork_id, position)
 VALUES ('col-1', 'art_abc123', 1);"
 ```
@@ -643,7 +643,7 @@ Expected: Results are ordered by created_at DESC (newest artwork first).
 Query database to confirm tags are stored as JSON:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="
+wrangler d1 execute site --command="
 SELECT id, tags FROM artworks WHERE id = 'art_abc123';"
 ```
 

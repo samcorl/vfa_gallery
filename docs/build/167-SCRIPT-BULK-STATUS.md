@@ -32,13 +32,13 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Prepare CSV Format
 
-Create a sample CSV file at `/vfa-gallery/scripts/samples/bulk_status_template.csv`:
+Create a sample CSV file at `/site/scripts/samples/bulk_status_template.csv`:
 
 ```bash
-mkdir -p /vfa-gallery/scripts/samples
+mkdir -p /site/scripts/samples
 ```
 
-Create `/vfa-gallery/scripts/samples/bulk_status_template.csv`:
+Create `/site/scripts/samples/bulk_status_template.csv`:
 
 ```csv
 user_id,new_status,reason
@@ -56,7 +56,7 @@ user_id,new_status,reason
 
 ### Step 2: Create Bulk Status Script
 
-Create `/vfa-gallery/scripts/bulk_status.rb`:
+Create `/site/scripts/bulk_status.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -75,7 +75,7 @@ class Config
   attr_reader :db_path, :csv_file, :dry_run, :verbose, :skip_validation, :remote
 
   def initialize
-    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/vfa-gallery-db.sqlite3', __dir__)
+    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/site-db.sqlite3', __dir__)
     @csv_file = nil
     @dry_run = true  # Default to dry-run for safety
     @verbose = false
@@ -458,7 +458,7 @@ class BulkStatusApp
 
     # Initialize database
     @db = if @config.remote
-            D1RemoteDatabase.new('vfa-gallery-db')
+            D1RemoteDatabase.new('site-db')
           else
             UserDatabase.new(@config.db_path)
           end
@@ -564,7 +564,7 @@ end
 ### Step 3: Make Script Executable
 
 ```bash
-chmod +x /vfa-gallery/scripts/bulk_status.rb
+chmod +x /site/scripts/bulk_status.rb
 ```
 
 ### Step 4: Create Activity Log Table (if not already present)
@@ -587,7 +587,7 @@ This should be created in build file **13-SCHEMA-SUPPORTING.md**.
 
 ### Step 5: Create Test CSV
 
-Create `/vfa-gallery/scripts/samples/bulk_status_test.csv`:
+Create `/site/scripts/samples/bulk_status_test.csv`:
 
 ```csv
 user_id,new_status,reason
@@ -598,7 +598,7 @@ user_id,new_status,reason
 
 ### Step 6: Add Documentation to Admin Scripts Guide
 
-Update `/vfa-gallery/docs/ADMIN-SCRIPTS.md` with:
+Update `/site/docs/ADMIN-SCRIPTS.md` with:
 
 ```markdown
 ## Bulk User Status Update Script
@@ -678,12 +678,12 @@ Every status change is logged to `activity_log` table with:
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/bulk_status.rb` - Bulk status update script (executable)
-- `/vfa-gallery/scripts/samples/bulk_status_template.csv` - CSV template
-- `/vfa-gallery/scripts/samples/bulk_status_test.csv` - Test data
+- `/site/scripts/bulk_status.rb` - Bulk status update script (executable)
+- `/site/scripts/samples/bulk_status_template.csv` - CSV template
+- `/site/scripts/samples/bulk_status_test.csv` - Test data
 
 **Modified:**
-- `/vfa-gallery/docs/ADMIN-SCRIPTS.md` - Add bulk status documentation
+- `/site/docs/ADMIN-SCRIPTS.md` - Add bulk status documentation
 
 ---
 

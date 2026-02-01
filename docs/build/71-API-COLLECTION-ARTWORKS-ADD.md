@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS collection_artworks (
 **Verification:**
 ```bash
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
-wrangler d1 execute vfa-gallery --command="PRAGMA table_info(collection_artworks);"
+wrangler d1 execute site --command="PRAGMA table_info(collection_artworks);"
 ```
 
 Expected output: Shows columns: id, collection_id, artwork_id, position, created_at
@@ -463,19 +463,19 @@ Create test user, gallery, collection, and artworks:
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
 
 # Create test user
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-71', 'test71@example.com', 'testuser71');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-71', 'test71@example.com', 'testuser71');"
 
 # Create test gallery
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-71', 'user-71', 'test-gallery', 'Test Gallery');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-71', 'user-71', 'test-gallery', 'Test Gallery');"
 
 # Create test collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-71', 'gal-71', 'featured', 'Featured Works');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-71', 'gal-71', 'featured', 'Featured Works');"
 
 # Create test artwork 1
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-71-1', 'user-71', 'Dragon Study', 'dragon-study', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-71-1', 'user-71', 'Dragon Study', 'dragon-study', 'active');"
 
 # Create test artwork 2
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-71-2', 'user-71', 'Sunset Landscape', 'sunset-landscape', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-71-2', 'user-71', 'Sunset Landscape', 'sunset-landscape', 'active');"
 ```
 
 ### Test 2: Successful Artwork Addition
@@ -533,7 +533,7 @@ curl -X POST http://localhost:8787/api/collections/col-71/artworks \
 Check collection_artworks table:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id='col-71' ORDER BY position;"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id='col-71' ORDER BY position;"
 ```
 
 Expected output:
@@ -569,8 +569,8 @@ Create another user and artwork, try adding with first user:
 
 ```bash
 # Create second user and artwork
-wrangler d1 execute vfa-gallery --command="INSERT INTO users (id, email, username) VALUES ('user-72', 'test72@example.com', 'testuser72');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72', 'user-72', 'Other Art', 'other-art', 'active');"
+wrangler d1 execute site --command="INSERT INTO users (id, email, username) VALUES ('user-72', 'test72@example.com', 'testuser72');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72', 'user-72', 'Other Art', 'other-art', 'active');"
 
 # Try to add artwork owned by user-72 to collection owned by user-71
 curl -X POST http://localhost:8787/api/collections/col-71/artworks \
@@ -594,8 +594,8 @@ Try adding artwork to collection owned by different user:
 
 ```bash
 # Create collection for user-72
-wrangler d1 execute vfa-gallery --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-72', 'user-72', 'other-gallery', 'Other Gallery');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-72', 'gal-72', 'other-collection', 'Other Collection');"
+wrangler d1 execute site --command="INSERT INTO galleries (id, user_id, slug, name) VALUES ('gal-72', 'user-72', 'other-gallery', 'Other Gallery');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-72', 'gal-72', 'other-collection', 'Other Collection');"
 
 # Try to add artwork from user-71 to collection owned by user-72
 curl -X POST http://localhost:8787/api/collections/col-72/artworks \
@@ -619,10 +619,10 @@ Soft-delete an artwork and try to add it:
 
 ```bash
 # Soft delete the artwork
-wrangler d1 execute vfa-gallery --command="UPDATE artworks SET status='deleted' WHERE id='art-71-1';"
+wrangler d1 execute site --command="UPDATE artworks SET status='deleted' WHERE id='art-71-1';"
 
 # Create a new collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-71-test', 'gal-71', 'test-col', 'Test Collection');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-71-test', 'gal-71', 'test-col', 'Test Collection');"
 
 # Try to add deleted artwork
 curl -X POST http://localhost:8787/api/collections/col-71-test/artworks \

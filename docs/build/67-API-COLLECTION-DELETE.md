@@ -408,7 +408,7 @@ Expected response (400):
 # (requires collection and artwork creation APIs)
 
 # Verify artwork exists in collection_artworks
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_test123';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_test123';"
 # Should return one or more rows
 
 # Delete the collection
@@ -416,7 +416,7 @@ curl -X DELETE http://localhost:8788/api/collections/col_test123 \
   -H "Authorization: Bearer <token>"
 
 # Verify collection_artworks entries are deleted
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_test123';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id = 'col_test123';"
 # Should return zero rows (empty result)
 ```
 
@@ -435,7 +435,7 @@ curl -X DELETE http://localhost:8788/api/collections/col_test123 \
   -H "Authorization: Bearer <token>"
 
 # Verify artwork still exists
-wrangler d1 execute vfa-gallery --command="SELECT * FROM artworks WHERE id = 'art_123';"
+wrangler d1 execute site --command="SELECT * FROM artworks WHERE id = 'art_123';"
 # Should still return the artwork record
 ```
 
@@ -450,7 +450,7 @@ Expected: Artwork record is preserved, only association is removed
 # Add same artwork (art_123) to both collections
 
 # Verify artwork is in both
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE artwork_id = 'art_123';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE artwork_id = 'art_123';"
 # Should return 2 rows
 
 # Delete collection A
@@ -458,7 +458,7 @@ curl -X DELETE http://localhost:8788/api/collections/col_A \
   -H "Authorization: Bearer <token>"
 
 # Verify artwork is still in collection B
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE artwork_id = 'art_123';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE artwork_id = 'art_123';"
 # Should return 1 row (for col_B only)
 ```
 
@@ -470,7 +470,7 @@ Expected: Artwork remains in other collections
 
 ```bash
 # After deleting a collection
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collections WHERE id = 'col_test123';"
+wrangler d1 execute site --command="SELECT * FROM collections WHERE id = 'col_test123';"
 ```
 
 Expected: Returns no rows (collection record deleted)

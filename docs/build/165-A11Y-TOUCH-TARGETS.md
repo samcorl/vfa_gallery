@@ -36,7 +36,7 @@ npm install -D @testing-library/react @testing-library/jest-dom jest
 
 ### Step 2: Define Touch Target Base Sizes
 
-Update `/vfa-gallery/tailwind.config.js` to add custom utilities for touch targets:
+Update `/site/tailwind.config.js` to add custom utilities for touch targets:
 
 ```javascript
 export default {
@@ -87,7 +87,7 @@ export default {
 
 ### Step 3: Create Touch-Target Base Component
 
-Create `/vfa-gallery/src/components/UI/TouchButton.tsx`:
+Create `/site/src/components/UI/TouchButton.tsx`:
 
 ```tsx
 import React from 'react';
@@ -142,7 +142,7 @@ export function TouchButton({
 
 ### Step 4: Create Touch-Target Link Component
 
-Create `/vfa-gallery/src/components/UI/TouchLink.tsx`:
+Create `/site/src/components/UI/TouchLink.tsx`:
 
 ```tsx
 import React from 'react';
@@ -193,7 +193,7 @@ export function TouchLink({
 
 ### Step 5: Update Icon Button Component for Touch
 
-Update `/vfa-gallery/src/components/UI/IconButton.tsx` to ensure touch target compliance:
+Update `/site/src/components/UI/IconButton.tsx` to ensure touch target compliance:
 
 ```tsx
 import React from 'react';
@@ -251,7 +251,7 @@ export function IconButton({
 
 ### Step 6: Implement Touch Spacing in Grids
 
-Create `/vfa-gallery/src/components/Gallery/GalleryGrid.tsx` with proper touch spacing:
+Create `/site/src/components/Gallery/GalleryGrid.tsx` with proper touch spacing:
 
 ```tsx
 import React from 'react';
@@ -296,7 +296,7 @@ export function GalleryGrid({ galleries }: GalleryGridProps) {
 
 ### Step 7: Update Form Controls for Touch
 
-Create `/vfa-gallery/src/components/Forms/TouchInput.tsx`:
+Create `/site/src/components/Forms/TouchInput.tsx`:
 
 ```tsx
 import React from 'react';
@@ -367,7 +367,7 @@ export function TouchInput({
 
 ### Step 8: Create Touch-Friendly Dropdown/Select
 
-Create `/vfa-gallery/src/components/Forms/TouchSelect.tsx`:
+Create `/site/src/components/Forms/TouchSelect.tsx`:
 
 ```tsx
 import React, { useState } from 'react';
@@ -438,7 +438,7 @@ export function TouchSelect({
 
 ### Step 9: Create Touch-Friendly List Items
 
-Update `/vfa-gallery/src/components/UI/ListItem.tsx`:
+Update `/site/src/components/UI/ListItem.tsx`:
 
 ```tsx
 import React from 'react';
@@ -501,7 +501,7 @@ export function ListItem({
 
 ### Step 10: Audit Existing Interactive Elements
 
-Create an audit script at `/vfa-gallery/scripts/audit-touch-targets.ts`:
+Create an audit script at `/site/scripts/audit-touch-targets.ts`:
 
 ```typescript
 import fs from 'fs';
@@ -580,7 +580,7 @@ results.forEach(result => {
 process.exit(results.length > 0 ? 1 : 0);
 ```
 
-Update `/vfa-gallery/package.json`:
+Update `/site/package.json`:
 
 ```json
 {
@@ -618,7 +618,7 @@ npm run dev
 
 ### Step 12: Implement Touch-Friendly Navigation
 
-Update `/vfa-gallery/src/components/Nav/MainNav.tsx`:
+Update `/site/src/components/Nav/MainNav.tsx`:
 
 ```tsx
 import React from 'react';
@@ -646,7 +646,7 @@ export function MainNav() {
 
 ### Step 13: Document Touch Target Requirements
 
-Create `/vfa-gallery/docs/TOUCH-TARGETS.md`:
+Create `/site/docs/TOUCH-TARGETS.md`:
 
 ```markdown
 # Touch Target Accessibility Guidelines
@@ -710,20 +710,20 @@ import { TouchLink } from '@/components/UI/TouchLink';
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/src/components/UI/TouchButton.tsx` - Touch-target-safe button component
-- `/vfa-gallery/src/components/UI/TouchLink.tsx` - Touch-target-safe link component
-- `/vfa-gallery/src/components/Forms/TouchInput.tsx` - Touch-target-safe input component
-- `/vfa-gallery/src/components/Forms/TouchSelect.tsx` - Touch-target-safe select component
-- `/vfa-gallery/src/components/UI/ListItem.tsx` - Touch-target-safe list item
-- `/vfa-gallery/scripts/audit-touch-targets.ts` - Automated touch target audit script
-- `/vfa-gallery/docs/TOUCH-TARGETS.md` - Touch target implementation guide
+- `/site/src/components/UI/TouchButton.tsx` - Touch-target-safe button component
+- `/site/src/components/UI/TouchLink.tsx` - Touch-target-safe link component
+- `/site/src/components/Forms/TouchInput.tsx` - Touch-target-safe input component
+- `/site/src/components/Forms/TouchSelect.tsx` - Touch-target-safe select component
+- `/site/src/components/UI/ListItem.tsx` - Touch-target-safe list item
+- `/site/scripts/audit-touch-targets.ts` - Automated touch target audit script
+- `/site/docs/TOUCH-TARGETS.md` - Touch target implementation guide
 
 **Modified:**
-- `/vfa-gallery/tailwind.config.js` - Add touch-target and touch-spacing utilities
-- `/vfa-gallery/src/components/UI/IconButton.tsx` - Update to use md size default (44x44px)
-- `/vfa-gallery/src/components/Gallery/GalleryGrid.tsx` - Add gap-6 and touch-spacing
-- `/vfa-gallery/src/components/Nav/MainNav.tsx` - Use TouchLink components
-- `/vfa-gallery/package.json` - Add audit:touch script
+- `/site/tailwind.config.js` - Add touch-target and touch-spacing utilities
+- `/site/src/components/UI/IconButton.tsx` - Update to use md size default (44x44px)
+- `/site/src/components/Gallery/GalleryGrid.tsx` - Add gap-6 and touch-spacing
+- `/site/src/components/Nav/MainNav.tsx` - Use TouchLink components
+- `/site/package.json` - Add audit:touch script
 
 ---
 

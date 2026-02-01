@@ -25,7 +25,7 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Install Wrangler CLI
 
-From the project root (`/vfa-gallery`), run:
+From the project root (`/site`), run:
 
 ```bash
 npm install -D wrangler
@@ -43,10 +43,10 @@ Should output a version number (e.g., `wrangler 3.x.x`).
 
 ### Step 3: Create wrangler.toml Configuration File
 
-Create a new file `/vfa-gallery/wrangler.toml` with the following contents:
+Create a new file `/site/wrangler.toml` with the following contents:
 
 ```toml
-name = "vfa-gallery"
+name = "site"
 type = "javascript"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -60,10 +60,10 @@ watch_paths = ["src/**/*.ts", "src/**/*.tsx"]
 format = "service-worker"
 
 [env.production]
-name = "vfa-gallery"
+name = "site"
 
 [env.preview]
-name = "vfa-gallery-preview"
+name = "site-preview"
 
 [[env.production.vars]]
 
@@ -83,9 +83,9 @@ crons = []
 
 ### Step 4: Verify Vite Build Configuration
 
-Ensure `/vfa-gallery/vite.config.ts` is properly configured to output to the `dist/` directory.
+Ensure `/site/vite.config.ts` is properly configured to output to the `dist/` directory.
 
-Edit `/vfa-gallery/vite.config.ts`:
+Edit `/site/vite.config.ts`:
 
 ```typescript
 import { defineConfig } from 'vite'
@@ -109,7 +109,7 @@ export default defineConfig({
 
 ### Step 5: Create Build Script in package.json
 
-Verify `/vfa-gallery/package.json` has a `build` script. Edit `package.json` to ensure `"scripts"` section includes:
+Verify `/site/package.json` has a `build` script. Edit `package.json` to ensure `"scripts"` section includes:
 
 ```json
 {
@@ -135,7 +135,7 @@ npm run build
 
 This should:
 1. Compile TypeScript with no errors
-2. Create a `/vfa-gallery/dist/` directory with `index.html` and bundled assets
+2. Create a `/site/dist/` directory with `index.html` and bundled assets
 3. Show build summary (e.g., "4 modules transformed")
 
 Check the output:
@@ -200,11 +200,11 @@ npm run build && npx wrangler pages dev dist/
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/wrangler.toml` - CloudFlare Pages configuration
+- `/site/wrangler.toml` - CloudFlare Pages configuration
 
 **Modified:**
-- `/vfa-gallery/vite.config.ts` - Ensure `outDir: 'dist'` and sourcemap enabled
-- `/vfa-gallery/package.json` - Verify `build` script includes `tsc && vite build`
+- `/site/vite.config.ts` - Ensure `outDir: 'dist'` and sourcemap enabled
+- `/site/package.json` - Verify `build` script includes `tsc && vite build`
 
 ---
 

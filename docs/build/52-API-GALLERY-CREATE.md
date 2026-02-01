@@ -675,7 +675,7 @@ Expected response (409):
 Verify gallery was created in database:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM galleries ORDER BY created_at DESC LIMIT 1;"
+wrangler d1 execute site --command="SELECT * FROM galleries ORDER BY created_at DESC LIMIT 1;"
 ```
 
 Expected: Shows the created gallery with all fields properly stored

@@ -567,7 +567,7 @@ Find the environment variables section and add:
 ```toml
 [env.development]
 vars = {
-  R2_PUBLIC_URL = "https://your-account-id.r2.cloudflarestorage.com/vfa-gallery-images"
+  R2_PUBLIC_URL = "https://your-account-id.r2.cloudflarestorage.com/site-images"
 }
 
 [env.production]
@@ -799,7 +799,7 @@ Expected response (400 Bad Request):
 Setup: First update a test user to have artwork_limit = 1:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="UPDATE users SET artwork_limit = 1 WHERE id = 'usr_limited';"
+wrangler d1 execute site --command="UPDATE users SET artwork_limit = 1 WHERE id = 'usr_limited';"
 ```
 
 Then try to create 2 artworks with the same user:
@@ -866,7 +866,7 @@ Expected response (400 Bad Request):
 Query the database to confirm artwork was created:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT id, slug, title, user_id, status FROM artworks WHERE user_id = 'usr_test123' LIMIT 5;"
+wrangler d1 execute site --command="SELECT id, slug, title, user_id, status FROM artworks WHERE user_id = 'usr_test123' LIMIT 5;"
 ```
 
 Expected: Shows the created artwork records.
@@ -878,7 +878,7 @@ Expected: Shows the created artwork records.
 Query to confirm all four image URL fields are populated:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT original_url, display_url, thumbnail_url, icon_url FROM artworks WHERE id = 'art_abc1234567890';"
+wrangler d1 execute site --command="SELECT original_url, display_url, thumbnail_url, icon_url FROM artworks WHERE id = 'art_abc1234567890';"
 ```
 
 Expected: All four URL fields contain valid URLs pointing to R2.

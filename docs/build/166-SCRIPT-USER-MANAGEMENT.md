@@ -32,7 +32,7 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Install Ruby Gems
 
-Create or update a `Gemfile` at `/vfa-gallery/Gemfile`:
+Create or update a `Gemfile` at `/site/Gemfile`:
 
 ```ruby
 source 'https://rubygems.org'
@@ -46,7 +46,7 @@ gem 'optparse', '~> 0.1'
 Run:
 
 ```bash
-cd /vfa-gallery
+cd /site
 bundle install
 ```
 
@@ -59,12 +59,12 @@ This installs:
 ### Step 2: Create Scripts Directory
 
 ```bash
-mkdir -p /vfa-gallery/scripts
+mkdir -p /site/scripts
 ```
 
 ### Step 3: Create User Management Script
 
-Create `/vfa-gallery/scripts/users.rb`:
+Create `/site/scripts/users.rb`:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -80,7 +80,7 @@ class Config
   attr_reader :db_path, :command, :search_term, :user_id, :limit, :offset
 
   def initialize
-    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/vfa-gallery-db.sqlite3', __dir__)
+    @db_path = ENV['D1_DB_PATH'] || File.expand_path('../.wrangler/state/d1/db/site-db.sqlite3', __dir__)
     @command = 'list'
     @search_term = nil
     @user_id = nil
@@ -446,12 +446,12 @@ end
 ### Step 4: Make Script Executable
 
 ```bash
-chmod +x /vfa-gallery/scripts/users.rb
+chmod +x /site/scripts/users.rb
 ```
 
 ### Step 5: Create Integration with Wrangler D1 (for production)
 
-Create a helper script `/vfa-gallery/scripts/lib/d1_helper.rb`:
+Create a helper script `/site/scripts/lib/d1_helper.rb`:
 
 ```ruby
 # Helper for accessing CloudFlare D1 via wrangler CLI
@@ -475,7 +475,7 @@ class D1Helper
 end
 ```
 
-Then update `/vfa-gallery/scripts/users.rb` to support production mode:
+Then update `/site/scripts/users.rb` to support production mode:
 
 Add this to the `Config` class:
 
@@ -498,7 +498,7 @@ def initialize(config)
 
   if @config.remote
     require_relative 'lib/d1_helper'
-    @db = D1RemoteDatabase.new('vfa-gallery-db')
+    @db = D1RemoteDatabase.new('site-db')
   else
     @db = UserDatabase.new(@config.db_path)
   end
@@ -561,7 +561,7 @@ end
 
 ### Step 6: Create Usage Documentation
 
-Create `/vfa-gallery/docs/ADMIN-SCRIPTS.md`:
+Create `/site/docs/ADMIN-SCRIPTS.md`:
 
 ```markdown
 # Admin Scripts Guide
@@ -573,7 +573,7 @@ List, search, and view user details.
 ### Installation
 
 ```bash
-cd /vfa-gallery
+cd /site
 bundle install
 chmod +x scripts/users.rb
 ```
@@ -610,7 +610,7 @@ ruby scripts/users.rb show --id 42 --remote
 
 ### Environment Variables
 
-- `D1_DB_PATH` - Path to local SQLite database (default: `.wrangler/state/d1/db/vfa-gallery-db.sqlite3`)
+- `D1_DB_PATH` - Path to local SQLite database (default: `.wrangler/state/d1/db/site-db.sqlite3`)
 - `DEBUG` - Set to `1` to show full stack traces on errors
 
 ### Examples
@@ -632,10 +632,10 @@ ruby scripts/users.rb list --limit 50 --offset 50
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/scripts/users.rb` - User management script (executable)
-- `/vfa-gallery/scripts/lib/d1_helper.rb` - D1 wrangler helper
-- `/vfa-gallery/Gemfile` - Ruby dependencies
-- `/vfa-gallery/docs/ADMIN-SCRIPTS.md` - Admin scripts documentation
+- `/site/scripts/users.rb` - User management script (executable)
+- `/site/scripts/lib/d1_helper.rb` - D1 wrangler helper
+- `/site/Gemfile` - Ruby dependencies
+- `/site/docs/ADMIN-SCRIPTS.md` - Admin scripts documentation
 
 ---
 

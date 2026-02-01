@@ -646,7 +646,7 @@ Expected response (200): Update succeeds
 Verify the update in database:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT id, name, email, updated_at FROM groups WHERE id='grp_abc123';"
+wrangler d1 execute site --command="SELECT id, name, email, updated_at FROM groups WHERE id='grp_abc123';"
 ```
 
 Expected: Shows updated values and new updated_at timestamp

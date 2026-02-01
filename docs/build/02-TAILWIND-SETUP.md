@@ -30,7 +30,7 @@ From **04-UI-UX-SPEC.md**:
 
 ### Step 1: Install Tailwind CSS and Dependencies
 
-From the project root (`/vfa-gallery`), run:
+From the project root (`/site`), run:
 
 ```bash
 npm install -D tailwindcss postcss autoprefixer
@@ -51,11 +51,11 @@ This creates two files:
 - `tailwind.config.js` - Tailwind configuration
 - `postcss.config.js` - PostCSS configuration
 
-Both files will be generated in `/vfa-gallery/` (project root).
+Both files will be generated in `/site/` (project root).
 
 ### Step 3: Configure Tailwind Content Paths
 
-Edit `/vfa-gallery/tailwind.config.js` and set the `content` array to:
+Edit `/site/tailwind.config.js` and set the `content` array to:
 
 ```javascript
 export default {
@@ -74,7 +74,7 @@ This tells Tailwind to scan all React files for class names and only include use
 
 ### Step 4: Define Mobile-First Breakpoints
 
-Update `/vfa-gallery/tailwind.config.js` to explicitly define breakpoints (these match Tailwind defaults, but we're making them explicit):
+Update `/site/tailwind.config.js` to explicitly define breakpoints (these match Tailwind defaults, but we're making them explicit):
 
 ```javascript
 export default {
@@ -111,7 +111,7 @@ Example:
 
 ### Step 5: Add Tailwind Directives to Global CSS
 
-Edit `/vfa-gallery/src/index.css` (or create it if missing) and replace entire contents with:
+Edit `/site/src/index.css` (or create it if missing) and replace entire contents with:
 
 ```css
 @tailwind base;
@@ -136,7 +136,7 @@ body {
 
 ### Step 6: Import Global CSS in main.tsx
 
-Edit `/vfa-gallery/src/main.tsx` and ensure it imports the CSS file:
+Edit `/site/src/main.tsx` and ensure it imports the CSS file:
 
 ```tsx
 import React from 'react'
@@ -155,7 +155,7 @@ The `import './index.css'` line must be present.
 
 ### Step 7: Update App.tsx with Tailwind Classes
 
-Edit `/vfa-gallery/src/App.tsx` to use Tailwind classes:
+Edit `/site/src/App.tsx` to use Tailwind classes:
 
 ```tsx
 import React from 'react';
@@ -214,14 +214,14 @@ Tailwind should inject its CSS into the page. In browser DevTools:
 ## Files to Create/Modify
 
 **Created:**
-- `/vfa-gallery/tailwind.config.js` - Tailwind configuration with breakpoints
-- `/vfa-gallery/postcss.config.js` - PostCSS configuration (auto-generated)
-- `/vfa-gallery/src/index.css` - Global CSS with @tailwind directives
+- `/site/tailwind.config.js` - Tailwind configuration with breakpoints
+- `/site/postcss.config.js` - PostCSS configuration (auto-generated)
+- `/site/src/index.css` - Global CSS with @tailwind directives
 
 **Modified:**
-- `/vfa-gallery/src/App.tsx` - Add Tailwind classes to markup
-- `/vfa-gallery/src/main.tsx` - Import index.css
-- `/vfa-gallery/package.json` - Added dev dependencies
+- `/site/src/App.tsx` - Add Tailwind classes to markup
+- `/site/src/main.tsx` - Import index.css
+- `/site/package.json` - Added dev dependencies
 
 ---
 

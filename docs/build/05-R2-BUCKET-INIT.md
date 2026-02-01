@@ -28,20 +28,20 @@ From **01-TECHNICAL-SPEC.md**:
 
 ### Step 1: Create R2 Bucket
 
-From the project root (`/vfa-gallery`), run:
+From the project root (`/site`), run:
 
 ```bash
-npx wrangler r2 bucket create vfa-gallery-images
+npx wrangler r2 bucket create site-images
 ```
 
 This command will:
 1. Create a new R2 bucket in your CloudFlare account
-2. Return the bucket name (should be `vfa-gallery-images`)
+2. Return the bucket name (should be `site-images`)
 3. Make it accessible for file storage
 
 **Example output:**
 ```
-✨ Successfully created bucket 'vfa-gallery-images'.
+✨ Successfully created bucket 'site-images'.
 ```
 
 If you get an error about account limits, verify your CloudFlare account has R2 enabled (available on all plans).
@@ -57,15 +57,15 @@ npx wrangler r2 bucket list
 Should output:
 ```
 Buckets:
-  vfa-gallery-images
+  site-images
 ```
 
 ### Step 3: Add R2 Binding to wrangler.toml
 
-Edit `/vfa-gallery/wrangler.toml` and add an `[[r2_buckets]]` section. Find the existing D1 configuration and add the R2 binding after it:
+Edit `/site/wrangler.toml` and add an `[[r2_buckets]]` section. Find the existing D1 configuration and add the R2 binding after it:
 
 ```toml
-name = "vfa-gallery"
+name = "site"
 type = "javascript"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -81,42 +81,42 @@ format = "service-worker"
 # D1 Database Binding
 [[d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 
 # R2 Bucket Binding
 [[r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "vfa-gallery-images"
+bucket_name = "site-images"
 
 [env.production]
-name = "vfa-gallery"
+name = "site"
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 
 [[env.production.r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "vfa-gallery-images"
+bucket_name = "site-images"
 
 [env.preview]
-name = "vfa-gallery-preview"
+name = "site-preview"
 
 [[env.preview.d1_databases]]
 binding = "DB"
-database_name = "vfa-gallery-db"
+database_name = "site-db"
 database_id = "YOUR_DATABASE_ID_HERE"
 
 [[env.preview.r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "vfa-gallery-images"
+bucket_name = "site-images"
 ```
 
 **What this does:**
 - `binding = "IMAGE_BUCKET"` - Variable name to use in Worker code (e.g., `env.IMAGE_BUCKET`)
-- `bucket_name = "vfa-gallery-images"` - The R2 bucket name from Step 1
+- `bucket_name = "site-images"` - The R2 bucket name from Step 1
 - Adds R2 bindings to all environments (development, production, preview)
 
 ### Step 4: Test R2 Bucket with Wrangler
@@ -125,12 +125,12 @@ Upload a test file to verify the bucket works:
 
 ```bash
 echo "test content" > test.txt
-npx wrangler r2 object put test.txt test.txt --bucket vfa-gallery-images
+npx wrangler r2 object put test.txt test.txt --bucket site-images
 ```
 
 This should output:
 ```
-✨ Uploaded test.txt to vfa-gallery-images.
+✨ Uploaded test.txt to site-images.
 ```
 
 ### Step 5: List Objects in Bucket
@@ -138,7 +138,7 @@ This should output:
 Verify the test file was uploaded:
 
 ```bash
-npx wrangler r2 object list vfa-gallery-images
+npx wrangler r2 object list site-images
 ```
 
 Should output:
@@ -152,28 +152,28 @@ Object List:
 Clean up the test file:
 
 ```bash
-npx wrangler r2 object delete test.txt --bucket vfa-gallery-images
+npx wrangler r2 object delete test.txt --bucket site-images
 rm test.txt
 ```
 
 Verify deletion:
 
 ```bash
-npx wrangler r2 object list vfa-gallery-images
+npx wrangler r2 object list site-images
 ```
 
 Should now show an empty bucket (or no output).
 
 ### Step 7: Create R2 Configuration Documentation
 
-Create a file `/vfa-gallery/docs/R2-STORAGE-GUIDE.md` for reference:
+Create a file `/site/docs/R2-STORAGE-GUIDE.md` for reference:
 
 ```markdown
 # R2 Storage Configuration Guide
 
 ## Bucket Details
 
-**Bucket Name:** vfa-gallery-images
+**Bucket Name:** site-images
 **Binding Name:** IMAGE_BUCKET
 **Access:** Internal (CloudFlare Workers only) + Public URLs via subdomain
 
@@ -215,7 +215,7 @@ const arrayBuffer = await file.arrayBuffer();
 CloudFlare R2 provides public URLs via custom subdomain:
 
 ```
-https://cdn.vfa-gallery.com/artworks/123/display.jpg
+https://cdn.site.com/artworks/123/display.jpg
 ```
 
 (Configure custom domain in CloudFlare dashboard)
@@ -231,13 +231,13 @@ https://cdn.vfa-gallery.com/artworks/123/display.jpg
 To delete old/unused images:
 
 ```bash
-npx wrangler r2 object delete {key} --bucket vfa-gallery-images
+npx wrangler r2 object delete {key} --bucket site-images
 ```
 
 For bulk operations, use CloudFlare API or worker script.
 ```
 
-Place this file at `/vfa-gallery/docs/R2-STORAGE-GUIDE.md`.
+Place this file at `/site/docs/R2-STORAGE-GUIDE.md`.
 
 ### Step 8: Verify Complete CloudFlare Stack
 
@@ -268,7 +268,7 @@ The command should start without R2-related errors. The R2 bucket is now accessi
 
 ### Step 10: Document CloudFlare Stack Summary
 
-Update `/vfa-gallery/docs/CLOUDFLARE-STACK.md` (create if missing):
+Update `/site/docs/CLOUDFLARE-STACK.md` (create if missing):
 
 ```markdown
 # CloudFlare Stack Configuration
@@ -283,14 +283,14 @@ Update `/vfa-gallery/docs/CLOUDFLARE-STACK.md` (create if missing):
 
 ### 2. D1 (Database)
 - **Service:** CloudFlare D1 (SQLite)
-- **Database Name:** vfa-gallery-db
+- **Database Name:** site-db
 - **Binding:** DB
 - **Migrations:** `/migrations/`
 - **Docs:** See MIGRATIONS-GUIDE.md
 
 ### 3. R2 (Image Storage)
 - **Service:** CloudFlare R2 (S3-compatible)
-- **Bucket Name:** vfa-gallery-images
+- **Bucket Name:** site-images
 - **Binding:** IMAGE_BUCKET
 - **Docs:** See R2-STORAGE-GUIDE.md
 
@@ -331,32 +331,32 @@ CloudFlare automatically deploys on git push:
 No manual deployment steps required after initial setup.
 ```
 
-Place this file at `/vfa-gallery/docs/CLOUDFLARE-STACK.md`.
+Place this file at `/site/docs/CLOUDFLARE-STACK.md`.
 
 ---
 
 ## Files to Create/Modify
 
 **Created:**
-- R2 bucket `vfa-gallery-images` (via CloudFlare dashboard/Wrangler)
-- `/vfa-gallery/docs/R2-STORAGE-GUIDE.md` - R2 storage documentation
-- `/vfa-gallery/docs/CLOUDFLARE-STACK.md` - CloudFlare stack overview
+- R2 bucket `site-images` (via CloudFlare dashboard/Wrangler)
+- `/site/docs/R2-STORAGE-GUIDE.md` - R2 storage documentation
+- `/site/docs/CLOUDFLARE-STACK.md` - CloudFlare stack overview
 
 **Modified:**
-- `/vfa-gallery/wrangler.toml` - Added `[[r2_buckets]]` binding section and environment configs
+- `/site/wrangler.toml` - Added `[[r2_buckets]]` binding section and environment configs
 
 ---
 
 ## Verification Checklist
 
-- [ ] `npx wrangler r2 bucket create vfa-gallery-images` completes successfully
-- [ ] `npx wrangler r2 bucket list` shows `vfa-gallery-images` bucket
+- [ ] `npx wrangler r2 bucket create site-images` completes successfully
+- [ ] `npx wrangler r2 bucket list` shows `site-images` bucket
 - [ ] R2 bucket binding added to `wrangler.toml` (root and both environments)
-- [ ] Test file upload succeeds: `npx wrangler r2 object put test.txt test.txt --bucket vfa-gallery-images`
-- [ ] `npx wrangler r2 object list vfa-gallery-images` shows test file
+- [ ] Test file upload succeeds: `npx wrangler r2 object put test.txt test.txt --bucket site-images`
+- [ ] `npx wrangler r2 object list site-images` shows test file
 - [ ] Test file deletion succeeds
-- [ ] `/vfa-gallery/docs/R2-STORAGE-GUIDE.md` exists
-- [ ] `/vfa-gallery/docs/CLOUDFLARE-STACK.md` exists
+- [ ] `/site/docs/R2-STORAGE-GUIDE.md` exists
+- [ ] `/site/docs/CLOUDFLARE-STACK.md` exists
 - [ ] `npx wrangler pages dev dist/ --local` starts without R2 errors
 - [ ] All CloudFlare services verified: D1, R2, Pages
 

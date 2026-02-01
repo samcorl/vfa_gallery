@@ -283,7 +283,7 @@ Expected response (404):
 Before deletion, note the group ID. After deletion, verify members are gone:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) as count FROM group_members WHERE group_id='grp_abc123';"
+wrangler d1 execute site --command="SELECT COUNT(*) as count FROM group_members WHERE group_id='grp_abc123';"
 ```
 
 Expected: Returns 0 (all members cascaded deleted)
@@ -302,7 +302,7 @@ Create a group with multiple members, then delete:
 6. Verify all group_members records are gone:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM group_members WHERE group_id='grp_abc123';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM group_members WHERE group_id='grp_abc123';"
 ```
 
 Expected: Returns 0
@@ -339,7 +339,7 @@ Expected response (404): Group not found
 Verify group record is gone:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) FROM groups WHERE id='grp_abc123';"
+wrangler d1 execute site --command="SELECT COUNT(*) FROM groups WHERE id='grp_abc123';"
 ```
 
 Expected: Returns 0

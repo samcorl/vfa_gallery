@@ -278,7 +278,7 @@ Use test data from Build 71 or create new:
 cd /Volumes/DataSSD/gitsrc/vfa_gallery
 
 # Verify collection has artworks (from Build 71)
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id='col-71';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id='col-71';"
 ```
 
 Expected output: At least one artwork in the collection.
@@ -305,7 +305,7 @@ curl -X DELETE http://localhost:8787/api/collections/col-71/artworks/art-71-1 \
 Confirm the artwork was not deleted, only removed from collection:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT id, title, status FROM artworks WHERE id='art-71-1';"
+wrangler d1 execute site --command="SELECT id, title, status FROM artworks WHERE id='art-71-1';"
 ```
 
 Expected output: Artwork still exists with status 'active'.
@@ -315,7 +315,7 @@ Expected output: Artwork still exists with status 'active'.
 Check that the relationship was deleted:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM collection_artworks WHERE collection_id='col-71' AND artwork_id='art-71-1';"
+wrangler d1 execute site --command="SELECT * FROM collection_artworks WHERE collection_id='col-71' AND artwork_id='art-71-1';"
 ```
 
 Expected output: No results (empty).
@@ -326,20 +326,20 @@ Setup: Add 3 artworks with positions 0, 1, 2. Remove middle one (position 1).
 
 ```bash
 # Create new test artworks
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-1', 'user-71', 'Art 1', 'art-1', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-2', 'user-71', 'Art 2', 'art-2', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-3', 'user-71', 'Art 3', 'art-3', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-1', 'user-71', 'Art 1', 'art-1', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-2', 'user-71', 'Art 2', 'art-2', 'active');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-72-3', 'user-71', 'Art 3', 'art-3', 'active');"
 
 # Create new collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-72-pos', 'gal-71', 'pos-test', 'Position Test');"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-72-pos', 'gal-71', 'pos-test', 'Position Test');"
 
 # Add artworks manually with specific positions
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-1', 'col-72-pos', 'art-72-1', 0);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-2', 'col-72-pos', 'art-72-2', 1);"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-3', 'col-72-pos', 'art-72-3', 2);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-1', 'col-72-pos', 'art-72-1', 0);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-2', 'col-72-pos', 'art-72-2', 1);"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-3', 'col-72-pos', 'art-72-3', 2);"
 
 # Verify positions before removal
-wrangler d1 execute vfa-gallery --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-72-pos' ORDER BY position;"
+wrangler d1 execute site --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-72-pos' ORDER BY position;"
 ```
 
 Output should show positions: 0, 1, 2
@@ -350,7 +350,7 @@ curl -X DELETE http://localhost:8787/api/collections/col-72-pos/artworks/art-72-
   -H "Authorization: Bearer YOUR_TEST_JWT"
 
 # Verify positions after removal
-wrangler d1 execute vfa-gallery --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-72-pos' ORDER BY position;"
+wrangler d1 execute site --command="SELECT artwork_id, position FROM collection_artworks WHERE collection_id='col-72-pos' ORDER BY position;"
 ```
 
 Expected output: Positions should now be 0, 1 (sequential without gaps).
@@ -362,8 +362,8 @@ Try removing artwork from collection owned by different user:
 ```bash
 # Create second user's collection (from Build 71)
 # Create art in first user's collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-other', 'user-72', 'Other User Art', 'other-art', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-other', 'col-72', 'art-other', 0);"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-other', 'user-72', 'Other User Art', 'other-art', 'active');"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-other', 'col-72', 'art-other', 0);"
 
 # Try to remove with user-71 token
 curl -X DELETE http://localhost:8787/api/collections/col-72/artworks/art-other \
@@ -413,7 +413,7 @@ curl -X DELETE http://localhost:8787/api/collections/col-71/artworks/art-71-2
 Check that the collection's updated_at timestamp changed:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT updated_at FROM collections WHERE id='col-71';"
+wrangler d1 execute site --command="SELECT updated_at FROM collections WHERE id='col-71';"
 ```
 
 Expected output: Timestamp is recent (should match deletion time).
@@ -424,16 +424,16 @@ Add and remove artwork until collection is empty:
 
 ```bash
 # Create a test collection
-wrangler d1 execute vfa-gallery --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-empty', 'gal-71', 'empty-test', 'Empty Test');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-single', 'user-71', 'Single Art', 'single', 'active');"
-wrangler d1 execute vfa-gallery --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-single', 'col-empty', 'art-single', 0);"
+wrangler d1 execute site --command="INSERT INTO collections (id, gallery_id, slug, name) VALUES ('col-empty', 'gal-71', 'empty-test', 'Empty Test');"
+wrangler d1 execute site --command="INSERT INTO artworks (id, user_id, title, slug, status) VALUES ('art-single', 'user-71', 'Single Art', 'single', 'active');"
+wrangler d1 execute site --command="INSERT INTO collection_artworks (id, collection_id, artwork_id, position) VALUES ('ca-single', 'col-empty', 'art-single', 0);"
 
 # Remove the only artwork
 curl -X DELETE http://localhost:8787/api/collections/col-empty/artworks/art-single \
   -H "Authorization: Bearer YOUR_TEST_JWT"
 
 # Verify collection is now empty
-wrangler d1 execute vfa-gallery --command="SELECT COUNT(*) as count FROM collection_artworks WHERE collection_id='col-empty';"
+wrangler d1 execute site --command="SELECT COUNT(*) as count FROM collection_artworks WHERE collection_id='col-empty';"
 ```
 
 Expected output: count = 0 (collection is empty but still exists).
@@ -464,14 +464,14 @@ Verify artwork record is completely unaffected:
 
 ```bash
 # Get artwork details before removal
-wrangler d1 execute vfa-gallery --command="SELECT id, user_id, title, created_at, updated_at FROM artworks WHERE id='art-71-1';"
+wrangler d1 execute site --command="SELECT id, user_id, title, created_at, updated_at FROM artworks WHERE id='art-71-1';"
 
 # Remove from collection
 curl -X DELETE http://localhost:8787/api/collections/col-71/artworks/art-71-1 \
   -H "Authorization: Bearer YOUR_TEST_JWT"
 
 # Get artwork details after removal
-wrangler d1 execute vfa-gallery --command="SELECT id, user_id, title, created_at, updated_at FROM artworks WHERE id='art-71-1';"
+wrangler d1 execute site --command="SELECT id, user_id, title, created_at, updated_at FROM artworks WHERE id='art-71-1';"
 ```
 
 Expected: Artwork details are identical before and after removal (only the collection_artworks entry was deleted).

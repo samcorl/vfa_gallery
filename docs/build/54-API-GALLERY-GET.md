@@ -523,7 +523,7 @@ Update gallery to have a theme (requires admin or theme assignment API), then fe
 
 ```bash
 # First update gallery with theme_id in database:
-wrangler d1 execute vfa-gallery --command="UPDATE galleries SET theme_id = 'theme_dark' WHERE id = 'gal_abc123';"
+wrangler d1 execute site --command="UPDATE galleries SET theme_id = 'theme_dark' WHERE id = 'gal_abc123';"
 
 # Then fetch:
 curl http://localhost:8788/api/galleries/gal_abc123 \
@@ -616,7 +616,7 @@ Expected: Returns 404 (IDs are case-sensitive)
 Query gallery directly in database:
 
 ```bash
-wrangler d1 execute vfa-gallery --command="SELECT * FROM galleries WHERE id = 'gal_abc123';"
+wrangler d1 execute site --command="SELECT * FROM galleries WHERE id = 'gal_abc123';"
 ```
 
 Expected: Returns gallery record with all fields matching API response

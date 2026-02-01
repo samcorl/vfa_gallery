@@ -522,10 +522,10 @@ Expected: Default collection appears in collections with is_default: true
 
 ```bash
 # Query galleries table
-wrangler d1 execute vfa-gallery --command="SELECT id, name, is_default FROM galleries WHERE is_default = 1 LIMIT 1;"
+wrangler d1 execute site --command="SELECT id, name, is_default FROM galleries WHERE is_default = 1 LIMIT 1;"
 
 # Query collections table
-wrangler d1 execute vfa-gallery --command="SELECT id, name, slug, is_default FROM collections WHERE is_default = 1 LIMIT 1;"
+wrangler d1 execute site --command="SELECT id, name, slug, is_default FROM collections WHERE is_default = 1 LIMIT 1;"
 ```
 
 Expected:

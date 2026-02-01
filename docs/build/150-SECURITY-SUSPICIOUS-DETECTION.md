@@ -689,7 +689,7 @@ done
 
 # After 5th upload, should be flagged
 # Check user status
-wrangler d1 execute vfa-gallery --command="SELECT id, username, status FROM users WHERE id = '{userId}';"
+wrangler d1 execute site --command="SELECT id, username, status FROM users WHERE id = '{userId}';"
 
 # Status should be 'flagged'
 ```
@@ -728,7 +728,7 @@ curl -X POST http://localhost:8787/api/admin/suspicious-activity/{userId}/clear-
 
 # User status should change from 'flagged' back to 'active'
 # Check result:
-wrangler d1 execute vfa-gallery --command="SELECT status FROM users WHERE id = '{userId}';"
+wrangler d1 execute site --command="SELECT status FROM users WHERE id = '{userId}';"
 ```
 
 ### Test 5: Get suspicious activity stats
@@ -749,7 +749,7 @@ for i in {1..6}; do
 done
 
 # Check activity log for failed attempts
-wrangler d1 execute vfa-gallery --command="SELECT action, COUNT(*) FROM activity_log WHERE action = 'user_login_failed' GROUP BY ip_address;"
+wrangler d1 execute site --command="SELECT action, COUNT(*) FROM activity_log WHERE action = 'user_login_failed' GROUP BY ip_address;"
 
 # Should show 6 failed attempts from same IP
 ```

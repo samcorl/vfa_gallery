@@ -28,7 +28,7 @@ Response:
 ```json
 {
   "success": true,
-  "message": "Artwork deleted successfully",
+  "message": "Artwork deleted",
   "id": "art_abc123"
 }
 ```
@@ -47,271 +47,24 @@ Response:
 
 ## Steps
 
-### Step 1: Create Artwork Deletion Service
+### Step 1: Add DELETE Handler to Artworks Router
 
-Build service module for deletion operations.
+Add the DELETE endpoint to the existing artworks router with auth protection, atomic batch operations, and proper error handling.
 
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/artworkDelete.ts`
+**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` (Modify existing file)
 
-```typescript
-import type { D1Database } from '@cloudflare/workers-types'
-
-/**
- * Deletion result
- */
-export interface DeletionResult {
-  success: boolean
-  artworkId: string
-  removedFromCollections: number
-  timestamp: string
-}
-
-/**
- * Artwork deletion service
- */
-export class ArtworkDeleteService {
-  private db: D1Database
-
-  constructor(db: D1Database) {
-    this.db = db
-  }
-
-  /**
-   * Soft delete an artwork
-   *
-   * Operation:
-   * 1. Verify artwork exists and is owned by user
-   * 2. Remove artwork from all collections
-   * 3. Set status to 'deleted'
-   * 4. Update updatedAt timestamp
-   *
-   * @param artworkId - The artwork ID to delete
-   * @param userId - The user ID (must own the artwork)
-   * @returns Deletion result with collection count
-   * @throws Error if artwork not found or not owned
-   */
-  async deleteArtwork(artworkId: string, userId: string): Promise<DeletionResult> {
-    try {
-      // Fetch artwork to verify ownership and get current state
-      const artwork = await this.db
-        .prepare('SELECT id, status FROM artworks WHERE id = ? AND user_id = ?')
-        .bind(artworkId, userId)
-        .first()
-
-      if (!artwork) {
-        throw new Error('Artwork not found or not owned by user')
-      }
-
-      // Already deleted - idempotent operation
-      if (artwork.status === 'deleted') {
-        return {
-          success: true,
-          artworkId,
-          removedFromCollections: 0,
-          timestamp: new Date().toISOString()
-        }
-      }
-
-      // Remove from all collections (get count first for response)
-      const collectionsResult = await this.db
-        .prepare('SELECT COUNT(*) as count FROM collection_artworks WHERE artwork_id = ?')
-        .bind(artworkId)
-        .first()
-
-      const collectionCount = collectionsResult?.count || 0
-
-      // Delete collection associations
-      if (collectionCount > 0) {
-        await this.db
-          .prepare('DELETE FROM collection_artworks WHERE artwork_id = ?')
-          .bind(artworkId)
-          .run()
-      }
-
-      // Update artwork status to deleted
-      const now = new Date().toISOString()
-      await this.db
-        .prepare(
-          'UPDATE artworks SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?'
-        )
-        .bind('deleted', now, artworkId, userId)
-        .run()
-
-      // Decrement user artwork count
-      await this.db
-        .prepare('UPDATE users SET artwork_count = MAX(0, artwork_count - 1) WHERE id = ?')
-        .bind(userId)
-        .run()
-
-      return {
-        success: true,
-        artworkId,
-        removedFromCollections: collectionCount,
-        timestamp: now
-      }
-    } catch (error) {
-      console.error('Error deleting artwork:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Bulk soft delete multiple artworks by user
-   * Useful for admin operations or account deletion
-   *
-   * @param artworkIds - Array of artwork IDs to delete
-   * @param userId - The user ID (must own all artworks)
-   * @returns Count of deleted artworks
-   */
-  async bulkDeleteArtworks(artworkIds: string[], userId: string): Promise<number> {
-    try {
-      if (!artworkIds || artworkIds.length === 0) {
-        return 0
-      }
-
-      // Validate all artworks are owned by user
-      const placeholders = artworkIds.map(() => '?').join(',')
-      const params = [...artworkIds, userId]
-
-      const existingResult = await this.db
-        .prepare(
-          `SELECT COUNT(*) as count FROM artworks
-           WHERE id IN (${placeholders}) AND user_id = ?`
-        )
-        .bind(...params)
-        .first()
-
-      if (existingResult?.count !== artworkIds.length) {
-        throw new Error('Not all artworks are owned by user')
-      }
-
-      // Remove from all collections
-      await this.db
-        .prepare(
-          `DELETE FROM collection_artworks
-           WHERE artwork_id IN (${placeholders})`
-        )
-        .bind(...artworkIds)
-        .run()
-
-      // Mark all as deleted
-      const now = new Date().toISOString()
-      await this.db
-        .prepare(
-          `UPDATE artworks
-           SET status = ?, updated_at = ?
-           WHERE id IN (${placeholders}) AND user_id = ?`
-        )
-        .bind('deleted', now, ...artworkIds, userId)
-        .run()
-
-      // Decrement user artwork count
-      await this.db
-        .prepare(
-          `UPDATE users
-           SET artwork_count = MAX(0, artwork_count - ?)
-           WHERE id = ?`
-        )
-        .bind(artworkIds.length, userId)
-        .run()
-
-      return artworkIds.length
-    } catch (error) {
-      console.error('Error bulk deleting artworks:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Permanently delete artwork (hard delete)
-   * WARNING: This is irreversible and removes all data
-   * Only use for admin operations or explicit user requests
-   *
-   * @param artworkId - The artwork ID to permanently delete
-   * @param userId - The user ID (must own the artwork)
-   */
-  async permanentlyDeleteArtwork(artworkId: string, userId: string): Promise<void> {
-    try {
-      // Remove from collections
-      await this.db
-        .prepare('DELETE FROM collection_artworks WHERE artwork_id = ?')
-        .bind(artworkId)
-        .run()
-
-      // Delete artwork record
-      const result = await this.db
-        .prepare('DELETE FROM artworks WHERE id = ? AND user_id = ?')
-        .bind(artworkId, userId)
-        .run()
-
-      if (!result.success) {
-        throw new Error('Artwork not found or not owned by user')
-      }
-
-      // Decrement user artwork count
-      await this.db
-        .prepare('UPDATE users SET artwork_count = MAX(0, artwork_count - 1) WHERE id = ?')
-        .bind(userId)
-        .run()
-    } catch (error) {
-      console.error('Error permanently deleting artwork:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Check if artwork is deleted
-   */
-  async isDeleted(artworkId: string): Promise<boolean> {
-    const result = await this.db
-      .prepare('SELECT status FROM artworks WHERE id = ? AND status = ?')
-      .bind(artworkId, 'deleted')
-      .first()
-
-    return !!result
-  }
-
-  /**
-   * Get deletion audit info
-   * Returns who deleted and when
-   */
-  async getDeletionInfo(artworkId: string): Promise<any> {
-    try {
-      const result = await this.db
-        .prepare('SELECT status, updated_at FROM artworks WHERE id = ?')
-        .bind(artworkId)
-        .first()
-
-      if (!result) {
-        return null
-      }
-
-      return {
-        status: result.status,
-        deletedAt: result.updated_at,
-        isDeleted: result.status === 'deleted'
-      }
-    } catch (error) {
-      console.error('Error getting deletion info:', error)
-      throw error
-    }
-  }
-}
-```
-
-### Step 2: Add DELETE Endpoint to Artworks Route
-
-Create the DELETE handler for artwork deletion.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` (Update existing file)
-
-Add this handler:
+Add this handler to the router:
 
 ```typescript
-import { json, type RequestHandler } from '@sveltejs/kit'
-import { auth } from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import { ArtworkDeleteService } from '$lib/api/services/artworkDelete'
+import { Hono } from 'hono'
+import type { HonoEnv } from '../../../types/env'
+import { requireAuth } from '../middleware/auth'
+import { getCurrentUser } from '../middleware/auth'
+import { Errors } from '../errors'
+
+const router = new Hono<HonoEnv>()
+
+// ... existing GET, POST, PATCH handlers ...
 
 /**
  * DELETE /api/artworks/:id
@@ -323,147 +76,80 @@ import { ArtworkDeleteService } from '$lib/api/services/artworkDelete'
  * - Returns 404 to all future requests
  * - Images remain in R2 for potential recovery
  *
+ * Auth: Required (must be owner)
  * Response codes:
  * - 200: Artwork successfully deleted
  * - 401: Not authenticated
  * - 403: Not authorized (don't own artwork)
- * - 404: Artwork not found
+ * - 404: Artwork not found or already deleted
  * - 500: Server error
  */
-export const DELETE: RequestHandler = async ({ url, request }) => {
+router.delete('/:id', requireAuth, async (c) => {
   try {
-    // Authenticate user
-    const session = await auth.getSession(request)
-    if (!session?.user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const userId = session.user.id
-
-    // Extract artwork ID from URL
-    const pathParts = url.pathname.split('/')
-    const artworkId = pathParts[pathParts.length - 1]
+    const db = c.env.DB
+    const user = await getCurrentUser(c)
+    const artworkId = c.req.param('id')
 
     if (!artworkId) {
-      return json({ error: 'Missing artwork ID' }, { status: 400 })
+      return c.json(Errors.badRequest('Missing artwork ID'), { status: 400 })
     }
 
-    // Initialize deletion service
-    const deleteService = new ArtworkDeleteService(db)
-
-    // Perform deletion
-    const result = await deleteService.deleteArtwork(artworkId, userId)
-
-    return json(
-      {
-        success: true,
-        message: 'Artwork deleted successfully',
-        artworkId: result.artworkId,
-        removedFromCollections: result.removedFromCollections,
-        deletedAt: result.timestamp
-      },
-      { status: 200 }
-    )
-  } catch (error) {
-    console.error('Error in DELETE /api/artworks/:id:', error)
-
-    if (error instanceof Error) {
-      if (error.message.includes('not found')) {
-        return json({ error: 'Artwork not found' }, { status: 404 })
-      }
-      if (error.message.includes('not owned')) {
-        return json(
-          { error: 'Not authorized to delete this artwork' },
-          { status: 403 }
-        )
-      }
-    }
-
-    return json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-```
-
-### Step 3: Update SvelteKit Route Handler
-
-Wire up the DELETE handler in SvelteKit routing.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/+server.ts` (Update)
-
-```typescript
-import { GET, PATCH, DELETE } from '$lib/api/routes/artworks'
-
-export { GET, PATCH, DELETE }
-```
-
-### Step 4: Create Admin Bulk Delete Endpoint (Optional)
-
-Create endpoint for admins to bulk delete user artworks.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/admin/artworks.ts` (Optional)
-
-```typescript
-import { json, type RequestHandler } from '@sveltejs/kit'
-import { auth } from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import { ArtworkDeleteService } from '$lib/api/services/artworkDelete'
-
-/**
- * POST /api/admin/artworks/bulk-delete
- * Admin bulk delete artworks (requires admin role)
- *
- * Request body:
- * {
- *   "artworkIds": ["art_123", "art_456"],
- *   "userId": "usr_xyz"
- * }
- */
-export const POST: RequestHandler = async ({ request }) => {
-  try {
-    // Authenticate and check admin role
-    const session = await auth.getSession(request)
-    if (!session?.user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check admin role
-    const userRole = await db
-      .prepare('SELECT role FROM users WHERE id = ?')
-      .bind(session.user.id)
+    // Verify artwork exists and is owned by user
+    const artwork = await db
+      .prepare('SELECT id, status FROM artworks WHERE id = ? AND user_id = ?')
+      .bind(artworkId, user.id)
       .first()
 
-    if (userRole?.role !== 'admin') {
-      return json({ error: 'Admin access required' }, { status: 403 })
+    if (!artwork) {
+      return c.json(Errors.notFound('Artwork not found'), { status: 404 })
     }
 
-    const body = await request.json()
-    const { artworkIds, userId } = body
-
-    if (!Array.isArray(artworkIds) || artworkIds.length === 0) {
-      return json({ error: 'artworkIds must be non-empty array' }, { status: 400 })
+    // If already deleted, return 404
+    if (artwork.status === 'deleted') {
+      return c.json(Errors.notFound('Artwork not found'), { status: 404 })
     }
 
-    if (!userId) {
-      return json({ error: 'userId is required' }, { status: 400 })
-    }
+    const now = new Date().toISOString()
 
-    const deleteService = new ArtworkDeleteService(db)
-    const deletedCount = await deleteService.bulkDeleteArtworks(artworkIds, userId)
-
-    return json(
+    // Use batch for atomic operations:
+    // 1. Update artwork status to 'deleted'
+    // 2. Remove from all collections
+    // 3. Decrement user artwork_count
+    const statements = [
+      // Update artwork status
       {
-        success: true,
-        message: 'Artworks deleted successfully',
-        deletedCount,
-        timestamp: new Date().toISOString()
+        statement: 'UPDATE artworks SET status = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+        params: ['deleted', now, artworkId, user.id]
       },
-      { status: 200 }
-    )
+      // Remove from all collections
+      {
+        statement: 'DELETE FROM collection_artworks WHERE artwork_id = ?',
+        params: [artworkId]
+      },
+      // Decrement artwork count (only if was previously 'active')
+      {
+        statement: 'UPDATE users SET artwork_count = MAX(0, artwork_count - 1) WHERE id = ?',
+        params: [user.id]
+      }
+    ]
+
+    await db.batch(statements)
+
+    return c.json({
+      success: true,
+      message: 'Artwork deleted',
+      id: artworkId
+    })
   } catch (error) {
-    console.error('Error in bulk delete:', error)
-    return json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error deleting artwork:', error)
+    return c.json(
+      Errors.internalError('Failed to delete artwork'),
+      { status: 500 }
+    )
   }
-}
+})
+
+export default router
 ```
 
 ---
@@ -472,10 +158,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/artworkDelete.ts` | Create | Artwork deletion service |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add DELETE handler |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/+server.ts` | Modify | Export DELETE handler |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/admin/artworks.ts` | Create | Admin bulk delete (optional) |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add DELETE handler to existing router |
 
 ---
 
@@ -484,23 +167,21 @@ export const POST: RequestHandler = async ({ request }) => {
 ### Test 1: Soft Delete Artwork
 ```bash
 # Owner deletes their artwork
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <owner-token>"
 
 # Expected: 200 OK
 # {
 #   "success": true,
-#   "message": "Artwork deleted successfully",
-#   "artworkId": "art_abc123",
-#   "removedFromCollections": 2,
-#   "deletedAt": "2024-01-15T11:30:00Z"
+#   "message": "Artwork deleted",
+#   "id": "art_abc123"
 # }
 ```
 
 ### Test 2: Deleted Artwork Not Accessible
 ```bash
 # Try to get deleted artwork
-curl -X GET http://localhost:5173/api/artworks/art_abc123 \
+curl -X GET https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <owner-token>"
 
 # Expected: 404 Not Found (even to owner!)
@@ -509,51 +190,51 @@ curl -X GET http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 3: Non-Owner Cannot Delete
 ```bash
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <other-user-token>"
 
-# Expected: 403 Forbidden
-# "Not authorized to delete this artwork"
+# Expected: 404 Not Found
+# (appears as if artwork doesn't exist to non-owners)
 ```
 
 ### Test 4: Unauthenticated Cannot Delete
 ```bash
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123
 
 # Expected: 401 Unauthorized
 ```
 
 ### Test 5: Nonexistent Artwork
 ```bash
-curl -X DELETE http://localhost:5173/api/artworks/art_nonexistent \
+curl -X DELETE https://your-domain.com/api/artworks/art_nonexistent \
   -H "Authorization: Bearer <token>"
 
 # Expected: 404 Not Found
 ```
 
-### Test 6: Idempotent Delete
+### Test 6: Already Deleted Returns 404
 ```bash
 # Delete artwork
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <owner-token>"
 
 # Expected: 200 OK
 
 # Delete same artwork again
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <owner-token>"
 
-# Expected: 200 OK (idempotent - safe to call multiple times)
+# Expected: 404 Not Found (now marked as deleted)
 ```
 
-### Test 7: Collections Removal
+### Test 7: Collections Removal Verification
 ```bash
 # Create artwork and add to 2 collections
 # Then delete artwork
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <owner-token>"
 
-# Expected: 200 OK with removedFromCollections: 2
+# Expected: 200 OK
 
 # Verify collection_artworks row removed
 # SELECT * FROM collection_artworks WHERE artwork_id = 'art_abc123'
@@ -563,36 +244,25 @@ curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
 ### Test 8: User Artwork Count Decremented
 ```bash
 # Check user artwork count before deletion
-curl -X GET http://localhost:5173/api/users/me \
+curl -X GET https://your-domain.com/api/users/me \
   -H "Authorization: Bearer <token>"
 # Note: artwork_count
 
 # Delete artwork
-curl -X DELETE http://localhost:5173/api/artworks/art_abc123 \
+curl -X DELETE https://your-domain.com/api/artworks/art_abc123 \
   -H "Authorization: Bearer <token>"
 
 # Check count again - should be decremented by 1
-curl -X GET http://localhost:5173/api/users/me \
+curl -X GET https://your-domain.com/api/users/me \
   -H "Authorization: Bearer <token>"
 # artwork_count should be 1 less
 ```
 
-### Test 9: Admin Bulk Delete (if implemented)
+### Test 9: Batch Operation Atomicity
 ```bash
-curl -X POST http://localhost:5173/api/admin/artworks/bulk-delete \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <admin-token>" \
-  -d '{
-    "artworkIds": ["art_123", "art_456", "art_789"],
-    "userId": "usr_xyz"
-  }'
-
-# Expected: 200 OK
-# {
-#   "success": true,
-#   "deletedCount": 3,
-#   "message": "Artworks deleted successfully"
-# }
+# All three operations (status update, collection removal, count decrement)
+# should complete atomically via c.env.DB.batch()
+# If any fails, entire batch fails and no partial updates occur
 ```
 
 ### Test 10: Status Verification
@@ -608,12 +278,13 @@ SELECT status, updated_at FROM artworks WHERE id = 'art_abc123'
 ## Notes
 
 - **Soft Deletes**: Artworks are not removed from database, only marked as deleted
-- **Idempotent**: Calling DELETE multiple times is safe and returns 200 each time
+- **Atomic Operations**: Uses `c.env.DB.batch()` to ensure all three operations complete together
 - **Collection Cleanup**: All collection associations are removed on deletion
-- **User Count**: Artwork count is decremented from user record
+- **User Count**: Artwork count is decremented from user record (only if was 'active')
 - **Access Control**: Deleted artworks return 404 to all users, including owners
+- **Idempotent**: Second delete attempt returns 404 (artwork already deleted)
 - **Audit Trail**: Updated timestamp can be used to track when artwork was deleted
 - **Images Preserved**: R2 images are NOT deleted; separate cleanup job can be created
-- **Hard Delete Available**: Service provides `permanentlyDeleteArtwork()` for admin cleanup if needed
-- **Timestamps**: Deletion respects `updated_at` for audit purposes
-
+- **Auth Pattern**: Uses `requireAuth` middleware and `getCurrentUser(c)` for user context
+- **Error Handling**: Uses `Errors` factory for consistent error responses
+- **Database**: Uses `c.env.DB` from Hono context for D1 access

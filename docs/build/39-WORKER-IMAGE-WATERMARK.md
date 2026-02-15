@@ -1,579 +1,327 @@
 # 39-WORKER-IMAGE-WATERMARK.md
 
 ## Goal
-Create a Cloudflare Worker that adds artist username watermarks to artwork images for public display, protecting artist attribution while presenting high-quality viewable versions.
+Implement frontend-based watermarking for artwork display using CSS overlays. This approach protects artist attribution by preventing direct access to high-resolution original images while maintaining a clean, composable architecture compatible with Cloudflare Pages + Hono + React stack.
 
 ## Spec Extract
-- **Input**: R2 key to original image (originals/{userId}/{uuid}.jpg)
-- **Additional Input**: Artist username for watermark text
-- **Output**: Watermarked display version stored at R2 path display/{userId}/{uuid}.jpg
+- **Watermarking Strategy**: CSS-based overlay on frontend display view (not server-side image transformation)
+- **Component**: `<WatermarkedImage>` React component at `src/components/ui/WatermarkedImage.tsx`
+- **Watermark Content**: Artist username with optional copyright symbol
 - **Watermark Position**: Bottom-right corner
-- **Watermark Style**: Semi-transparent text, clean sans-serif font
-- **Watermark Size**: Scaled relative to image dimensions
-- **Processing**: Server-side, asynchronous
-- **Purpose**: Public display with artist attribution
+- **Watermark Style**: Semi-transparent white text with subtle text shadow
+- **Overlay Layer**: Non-interactive (`pointer-events: none`) positioned absolutely over image
+- **Right-Click Protection**: Disabled context menu on image element
+- **Image Source**: Display variant from spec 37 image utilities (CDN: `https://images.vfa.gallery`)
+- **R2 Access Control**: Original images in `originals/` prefix NOT publicly accessible; only `display/` variant URLs served via CDN
 
 ## Prerequisites
-- Build 36: Upload URL generation working
-- Build 37: Thumbnail generation working
-- Build 38: Icon generation working
-- Build 05: Environment configuration with R2 credentials
-- Original images successfully uploading to R2
-- User database with username/artist name fields
+- Build 37: Image URL utilities working (image transformation and CDN domain configured)
+- Cloudflare Pages project configured with Hono framework
+- React component library structure established
+- R2 bucket with `originals/` and `display/` prefixes configured
+- Image upload pipeline storing originals at `originals/{userId}/{uuid}.jpg`
+- Display variants accessible via `https://images.vfa.gallery/display/{userId}/{uuid}.jpg`
 
 ## Steps
 
-### 1. Create Watermark Worker
+### 1. Create WatermarkedImage Component
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/functions/workers/image-watermark.ts`
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/components/ui/WatermarkedImage.tsx`
 
 ```typescript
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import Jimp from 'jimp';
+import React, { CSSProperties } from 'react';
+import { getImageUrl } from '@/lib/imageUtils';
 
-// Initialize S3 client for R2
-const s3Client = new S3Client({
-  region: 'auto',
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || ''
-  },
-  endpoint: process.env.R2_ENDPOINT || ''
-});
-
-const BUCKET = process.env.BUCKET || 'site-prod';
-
-export interface WatermarkProcessRequest {
-  originalKey: string;
-  userId: string;
-  uuid: string;
-  artistUsername: string;
-}
-
-export interface WatermarkProcessResult {
-  success: boolean;
-  displayUrl?: string;
-  displayKey?: string;
-  error?: string;
-  processingTime?: number;
+interface WatermarkedImageProps {
+  imageKey: string;
+  artistName: string;
+  alt: string;
+  className?: string;
+  width?: number;
+  height?: number;
+  priority?: boolean;
 }
 
 /**
- * Download image from R2 storage
+ * WatermarkedImage Component
+ *
+ * Displays artwork with a semi-transparent CSS watermark overlay
+ * containing the artist's username. The watermark is non-interactive
+ * and positioned in the bottom-right corner.
+ *
+ * Right-click is disabled to prevent direct image saving without watermark.
+ *
+ * Props:
+ * - imageKey: R2 key for the artwork (e.g., "userId/uuid.jpg")
+ * - artistName: Artist's username to display in watermark
+ * - alt: Alt text for accessibility
+ * - className: Optional CSS class for the container
+ * - width: Image display width in pixels (optional)
+ * - height: Image display height in pixels (optional)
+ * - priority: Load image with high priority (optional)
  */
-async function downloadFromR2(key: string): Promise<Buffer> {
-  try {
-    const command = new GetObjectCommand({
-      Bucket: BUCKET,
-      Key: key
-    });
+export const WatermarkedImage: React.FC<WatermarkedImageProps> = ({
+  imageKey,
+  artistName,
+  alt,
+  className = '',
+  width,
+  height,
+  priority = false
+}) => {
+  // Get the display variant image URL from CDN
+  const imageUrl = getImageUrl(imageKey, 'display');
 
-    const response = await s3Client.send(command);
+  // Handle right-click on image to prevent direct save
+  const handleContextMenu = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.preventDefault();
+    // Optionally: show a message or toast that explains watermarking
+    return false;
+  };
 
-    // Convert stream to buffer
-    if (response.Body instanceof Uint8Array) {
-      return Buffer.from(response.Body);
-    }
+  // Watermark text with copyright symbol
+  const watermarkText = `© ${artistName}`;
 
-    const chunks: Uint8Array[] = [];
-    const reader = response.Body?.getReader?.();
+  // Container styles
+  const containerStyle: CSSProperties = {
+    position: 'relative',
+    display: 'inline-block',
+    width: width ? `${width}px` : 'auto',
+    height: height ? `${height}px` : 'auto'
+  };
 
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-      }
-      return Buffer.concat(chunks.map(c => Buffer.from(c)));
-    }
+  // Image styles
+  const imageStyle: CSSProperties = {
+    display: 'block',
+    width: '100%',
+    height: 'auto',
+    maxWidth: '100%'
+  };
 
-    throw new Error('Unable to read image stream');
-  } catch (error) {
-    console.error('Failed to download from R2:', error);
-    throw error;
-  }
-}
+  // Watermark overlay styles
+  const watermarkStyle: CSSProperties = {
+    position: 'absolute',
+    bottom: '16px',
+    right: '16px',
+    padding: '8px 12px',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: '14px',
+    fontWeight: '500',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+    borderRadius: '2px',
+    pointerEvents: 'none',
+    userSelect: 'none',
+    whiteSpace: 'nowrap',
+    zIndex: 10
+  };
 
-/**
- * Calculate appropriate font size based on image dimensions
- * Rule: font size = image width / 20 (20 characters per line at typical width)
- */
-function calculateFontSize(imageWidth: number): number {
-  const calculatedSize = Math.max(24, Math.floor(imageWidth / 20));
-  return Math.min(calculatedSize, 96); // Cap at 96px
-}
+  return (
+    <div className={className} style={containerStyle}>
+      <img
+        src={imageUrl}
+        alt={alt}
+        style={imageStyle}
+        onContextMenu={handleContextMenu}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+      <div style={watermarkStyle}>
+        {watermarkText}
+      </div>
+    </div>
+  );
+};
 
-/**
- * Add watermark text to image
- */
-async function addWatermark(
-  imageBuffer: Buffer,
-  artistUsername: string
-): Promise<Buffer> {
-  try {
-    const image = await Jimp.read(imageBuffer);
-
-    const width = image.bitmap.width;
-    const height = image.bitmap.height;
-
-    // Calculate font size based on image width
-    const fontSize = calculateFontSize(width);
-
-    // Load default font or use built-in
-    // Note: Jimp comes with a default font
-    const font = Jimp.FONT_SANS_32_BLACK; // Will be overridden if custom size needed
-
-    // Create watermark text
-    const watermarkText = `© ${artistUsername}`;
-
-    // Estimate text dimensions (rough calculation)
-    // Each character is approximately fontSize * 0.5 wide
-    const estimatedTextWidth = watermarkText.length * fontSize * 0.5;
-    const estimatedTextHeight = fontSize * 1.2;
-
-    // Position in bottom-right corner with padding
-    const padding = Math.floor(width * 0.02); // 2% of image width as padding
-    const textX = Math.max(0, width - estimatedTextWidth - padding);
-    const textY = Math.max(0, height - estimatedTextHeight - padding);
-
-    // Create semi-transparent overlay for text background
-    // This improves readability over any background
-    const overlayHeight = Math.floor(estimatedTextHeight * 1.3);
-    const overlayWidth = Math.floor(estimatedTextWidth * 1.2);
-
-    // Add semi-transparent black background box behind text
-    const bgX = textX - padding / 2;
-    const bgY = textY - padding / 2;
-
-    // Create a temporary image for the overlay
-    const overlay = new Jimp({
-      width: overlayWidth,
-      height: overlayHeight,
-      color: 0x00000080 // Black with 50% opacity (0x80 = 128 = 50%)
-    });
-
-    // Composite overlay onto main image
-    image.composite(overlay, bgX, bgY);
-
-    // Print white text on the background
-    // Using Jimp's print method (requires font)
-    image.print({
-      font: Jimp.FONT_SANS_32_WHITE,
-      x: textX,
-      y: textY,
-      text: watermarkText,
-      maxWidth: width - (2 * padding),
-      maxHeight: estimatedTextHeight
-    });
-
-    // Compress with 85% quality for web display
-    const watermarkedBuffer = await image.quality(85).toBuffer('image/jpeg');
-
-    return watermarkedBuffer;
-  } catch (error) {
-    console.error('Failed to add watermark:', error);
-    throw error;
-  }
-}
-
-/**
- * Upload watermarked image to R2 storage
- */
-async function uploadToR2(
-  watermarkedBuffer: Buffer,
-  userId: string,
-  uuid: string
-): Promise<string> {
-  try {
-    const displayKey = `display/${userId}/${uuid}.jpg`;
-
-    const command = new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: displayKey,
-      Body: watermarkedBuffer,
-      ContentType: 'image/jpeg',
-      Metadata: {
-        'original-type': 'display',
-        'watermarked': 'true',
-        'generated-at': new Date().toISOString()
-      }
-    });
-
-    await s3Client.send(command);
-
-    // Generate public URL
-    const publicUrl = `${process.env.R2_PUBLIC_URL}/display/${userId}/${uuid}.jpg`;
-
-    return publicUrl;
-  } catch (error) {
-    console.error('Failed to upload watermarked image to R2:', error);
-    throw error;
-  }
-}
-
-/**
- * Main worker function to process watermark
- */
-export async function processWatermark(
-  request: WatermarkProcessRequest
-): Promise<WatermarkProcessResult> {
-  const startTime = Date.now();
-
-  try {
-    console.log(`Processing watermark for key: ${request.originalKey}`);
-
-    // Validate artist username
-    if (!request.artistUsername || request.artistUsername.length === 0) {
-      throw new Error('Artist username is required for watermark');
-    }
-
-    if (request.artistUsername.length > 50) {
-      throw new Error('Artist username is too long (max 50 characters)');
-    }
-
-    // Download original image from R2
-    const imageBuffer = await downloadFromR2(request.originalKey);
-    console.log(`Downloaded image: ${imageBuffer.length} bytes`);
-
-    // Add watermark
-    const watermarkedBuffer = await addWatermark(imageBuffer, request.artistUsername);
-    console.log(`Added watermark: ${watermarkedBuffer.length} bytes`);
-
-    // Upload to R2
-    const displayUrl = await uploadToR2(
-      watermarkedBuffer,
-      request.userId,
-      request.uuid
-    );
-
-    const processingTime = Date.now() - startTime;
-
-    console.log(`Watermark processed successfully in ${processingTime}ms`);
-
-    return {
-      success: true,
-      displayUrl,
-      displayKey: `display/${request.userId}/${request.uuid}.jpg`,
-      processingTime
-    };
-  } catch (error) {
-    const processingTime = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    console.error(`Watermark processing failed: ${errorMessage}`);
-
-    return {
-      success: false,
-      error: errorMessage,
-      processingTime
-    };
-  }
-}
-
-/**
- * HTTP handler for the Cloudflare Worker
- */
-export async function handleWatermarkRequest(
-  event: FetchEvent
-): Promise<Response> {
-  const request = event.request;
-
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  try {
-    const body = await request.json() as WatermarkProcessRequest;
-
-    if (!body.originalKey || !body.userId || !body.uuid || !body.artistUsername) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing required fields: originalKey, userId, uuid, artistUsername'
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const result = await processWatermark(body);
-
-    return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
-}
+export default WatermarkedImage;
 ```
 
-### 2. Create API Endpoint for Watermark Generation
+### 2. Document R2 Access Control Configuration
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/watermark/+server.ts`
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/docs/configuration/R2-ACCESS-CONTROL.md`
+
+```markdown
+# R2 Access Control Strategy
+
+## Overview
+The VFA Gallery uses a two-tier R2 storage structure:
+- **originals/**: Private, server-only access (via Hono backend)
+- **display/**: Public CDN access via `https://images.vfa.gallery`
+
+## R2 Bucket Configuration
+
+### Prefix: originals/
+- **Access**: Private (no public URL)
+- **Purpose**: Store original high-resolution artwork files
+- **Access Method**: Server-side only, via AWS SDK with R2 credentials
+- **Use Case**:
+  - Backup/archival of original files
+  - Server-side transformations (future enhancement)
+  - Admin/artist download of originals (authenticated endpoint)
+
+### Prefix: display/
+- **Access**: Public via CDN
+- **Purpose**: Serve optimized display variants
+- **Access Method**: Public HTTPS through Cloudflare CDN domain
+- **URL Pattern**: `https://images.vfa.gallery/display/{userId}/{uuid}.jpg`
+
+## Implementation
+
+### Option 1: Cloudflare Transform Rules (Recommended)
+Configure a Cloudflare Transform Rule to:
+1. Block direct requests to `images.vfa.gallery/originals/*`
+2. Allow only `images.vfa.gallery/display/*` paths
+3. Return 403 Forbidden for blocked paths
+
+Example Transform Rule:
+```
+Request path contains "originals" → Block (403)
+```
+
+### Option 2: Custom Hono Middleware (Alternative)
+If Cloudflare Transform Rules are insufficient, add a Hono middleware:
+
+**File**: `src/middleware/imageAccess.ts`
 
 ```typescript
-import { json, type RequestHandler } from '@sveltejs/kit';
-import { processWatermark } from '$lib/server/workers/image-watermark';
-import { getUserById } from '$lib/server/db/users';
+import { Hono } from 'hono';
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-  try {
-    // Verify authentication
-    const session = await locals.auth.getSession(request);
-    if (!session?.user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
+export const imageAccessMiddleware = (app: Hono) => {
+  app.all('*', async (c, next) => {
+    const url = new URL(c.req.url);
+
+    // Block access to originals prefix
+    if (url.pathname.includes('/originals/')) {
+      return c.text('Forbidden', 403);
     }
 
-    // Parse request
-    const body = await request.json().catch(() => ({}));
-    const { originalKey, userId, uuid, artistUsername } = body;
-
-    // Validate input
-    if (!originalKey || !userId || !uuid) {
-      return json(
-        { error: 'Missing required fields: originalKey, userId, uuid' },
-        { status: 400 }
-      );
-    }
-
-    let watermarkUsername = artistUsername;
-
-    // If not provided, fetch from user database
-    if (!watermarkUsername) {
-      const user = await getUserById(userId);
-      if (!user?.username && !user?.displayName) {
-        return json(
-          { error: 'Could not determine artist username' },
-          { status: 400 }
-        );
-      }
-      watermarkUsername = user.username || user.displayName;
-    }
-
-    // Validate username
-    if (!watermarkUsername || watermarkUsername.length === 0) {
-      return json(
-        { error: 'Invalid artist username' },
-        { status: 400 }
-      );
-    }
-
-    // Process watermark
-    const result = await processWatermark({
-      originalKey,
-      userId,
-      uuid,
-      artistUsername: watermarkUsername
-    });
-
-    if (!result.success) {
-      return json(
-        { error: result.error || 'Watermark processing failed' },
-        { status: 500 }
-      );
-    }
-
-    return json({
-      success: true,
-      displayUrl: result.displayUrl,
-      displayKey: result.displayKey,
-      processingTime: result.processingTime
-    });
-
-  } catch (error) {
-    console.error('Watermark endpoint error:', error);
-    return json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+    await next();
+  });
 };
 ```
 
-### 3. Create Watermark Worker Utilities Module
+## Why CSS-Based Watermarking?
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/workers/image-watermark.ts`
+### Advantages
+1. **Cloudflare Workers Compatibility**: No Jimp or external libraries needed
+2. **Composability**: Works with any image transformation approach
+3. **Performance**: Zero server overhead; applied at render time
+4. **Maintenance**: Watermark styling controlled entirely in frontend
+5. **Accessibility**: Alt text and semantic HTML preserved
+6. **Flexibility**: Easy to customize appearance per-gallery or per-artist
 
-```typescript
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import Jimp from 'jimp';
+### Limitations
+1. **Right-Click Bypass**: Users with browser dev tools can extract the original image URL
+2. **Screenshot Protection**: Cannot prevent full screenshot/screenshot tools
+3. **Print Protection**: Watermark visible in print but requires CSS rule adjustments
 
-export interface WatermarkRequest {
-  originalKey: string;
-  userId: string;
-  uuid: string;
-  artistUsername: string;
-}
+### Mitigations
+- Disable right-click on image (`onContextMenu` handler)
+- Consider canvas-based approach for future (more robust but heavier)
+- Educate users that watermark indicates proper attribution
+- Terms of service prohibit redistribution
 
-export interface WatermarkResult {
-  success: boolean;
-  displayUrl?: string;
-  displayKey?: string;
-  error?: string;
-  processingTime?: number;
-}
+## Future Enhancements
 
-const s3Client = new S3Client({
-  region: 'auto',
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || ''
-  },
-  endpoint: process.env.R2_ENDPOINT || ''
-});
+### Canvas-Based Watermark (Stronger Protection)
+For maximum protection against right-click saves:
+1. Load image as canvas element
+2. Render watermark as pixel overlay at specific coordinates
+3. Export as data URL or blob
+4. User would save watermarked composite
 
-const BUCKET = process.env.BUCKET || 'site-prod';
+Trade-off: Increased complexity, larger bundle size, potential performance impact.
 
-function calculateFontSize(imageWidth: number): number {
-  const calculatedSize = Math.max(24, Math.floor(imageWidth / 20));
-  return Math.min(calculatedSize, 96);
-}
+### Cloudflare Image Transformations with Draw Overlay
+If future requirements demand server-side watermarking:
+1. Use Cloudflare Image Transformations `draw` parameter
+2. Overlay image must be in same Cloudflare zone
+3. Would eliminate need for separate processing
+4. URL becomes: `https://images.vfa.gallery/display/{userId}/{uuid}.jpg?draw=...`
 
-async function addWatermarkText(
-  imageBuffer: Buffer,
-  artistUsername: string
-): Promise<Buffer> {
-  const image = await Jimp.read(Buffer.from(imageBuffer));
-
-  const width = image.bitmap.width;
-  const height = image.bitmap.height;
-
-  const fontSize = calculateFontSize(width);
-  const watermarkText = `© ${artistUsername}`;
-
-  const estimatedTextWidth = watermarkText.length * fontSize * 0.5;
-  const estimatedTextHeight = fontSize * 1.2;
-  const padding = Math.floor(width * 0.02);
-
-  const textX = Math.max(0, width - estimatedTextWidth - padding);
-  const textY = Math.max(0, height - estimatedTextHeight - padding);
-
-  // Add semi-transparent background
-  const overlayHeight = Math.floor(estimatedTextHeight * 1.3);
-  const overlayWidth = Math.floor(estimatedTextWidth * 1.2);
-
-  const bgX = textX - padding / 2;
-  const bgY = textY - padding / 2;
-
-  const overlay = new Jimp({
-    width: overlayWidth,
-    height: overlayHeight,
-    color: 0x00000080
-  });
-
-  image.composite(overlay, bgX, bgY);
-
-  // Add text
-  image.print({
-    font: Jimp.FONT_SANS_32_WHITE,
-    x: textX,
-    y: textY,
-    text: watermarkText,
-    maxWidth: width - (2 * padding),
-    maxHeight: estimatedTextHeight
-  });
-
-  return await image.quality(85).toBuffer('image/jpeg');
-}
-
-export async function processWatermark(
-  request: WatermarkRequest
-): Promise<WatermarkResult> {
-  const startTime = Date.now();
-
-  try {
-    // Validate username
-    if (!request.artistUsername || request.artistUsername.length === 0) {
-      throw new Error('Artist username required');
-    }
-
-    if (request.artistUsername.length > 50) {
-      throw new Error('Artist username too long');
-    }
-
-    // Download original
-    const downloadCommand = new GetObjectCommand({
-      Bucket: BUCKET,
-      Key: request.originalKey
-    });
-
-    const response = await s3Client.send(downloadCommand);
-    const imageBuffer = await response.Body?.transformToByteArray();
-
-    if (!imageBuffer) {
-      throw new Error('Failed to read image buffer');
-    }
-
-    // Add watermark
-    const watermarkedBuffer = await addWatermarkText(
-      Buffer.from(imageBuffer),
-      request.artistUsername
-    );
-
-    // Upload display version
-    const displayKey = `display/${request.userId}/${request.uuid}.jpg`;
-
-    const uploadCommand = new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: displayKey,
-      Body: watermarkedBuffer,
-      ContentType: 'image/jpeg',
-      Metadata: {
-        'generated-at': new Date().toISOString(),
-        'watermarked': 'true'
-      }
-    });
-
-    await s3Client.send(uploadCommand);
-
-    const displayUrl = `${process.env.R2_PUBLIC_URL}/display/${request.userId}/${request.uuid}.jpg`;
-
-    return {
-      success: true,
-      displayUrl,
-      displayKey,
-      processingTime: Date.now() - startTime
-    };
-  } catch (error) {
-    console.error('Watermark processing error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      processingTime: Date.now() - startTime
-    };
-  }
-}
+Note: Not implemented initially due to overlay image zone requirements.
 ```
 
-### 4. Add User Database Utility (if not exists)
+### 3. Export WatermarkedImage from UI Component Index
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/db/users.ts`
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/components/ui/index.ts`
+
+Add the following export (create file if it doesn't exist):
 
 ```typescript
-import { db } from '$lib/server/db';
+export { WatermarkedImage } from './WatermarkedImage';
+export type { WatermarkedImageProps } from './WatermarkedImage';
+```
 
-export async function getUserById(userId: string) {
-  try {
-    const user = await db.query(
-      'SELECT id, username, "displayName" FROM users WHERE id = $1',
-      [userId]
-    );
-    return user.rows[0] || null;
-  } catch (error) {
-    console.error('Failed to fetch user:', error);
-    return null;
+### 4. Update Artwork Display Page to Use WatermarkedImage
+
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/pages/ArtworkPage.tsx`
+
+Example usage in artwork detail view:
+
+```typescript
+import { WatermarkedImage } from '@/components/ui/WatermarkedImage';
+
+export const ArtworkPage = ({ artwork, artist }) => {
+  return (
+    <div className="artwork-detail">
+      <WatermarkedImage
+        imageKey={artwork.imageKey}
+        artistName={artist.username}
+        alt={artwork.title}
+        className="artwork-image"
+        priority={true}
+      />
+      <div className="artwork-info">
+        <h1>{artwork.title}</h1>
+        <p>by {artist.displayName}</p>
+        {/* ... rest of artwork details ... */}
+      </div>
+    </div>
+  );
+};
+```
+
+### 5. Add CSS for Enhanced Watermark Display (Optional)
+
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/styles/watermark.css`
+
+```css
+/* Watermarked Image Container */
+.watermarked-image-container {
+  position: relative;
+  overflow: hidden;
+  background-color: #f5f5f5;
+}
+
+.watermarked-image-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Prevent image drag interactions */
+.watermarked-image-container img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Responsive watermark sizing for smaller screens */
+@media (max-width: 768px) {
+  .watermarked-image-container .watermark-overlay {
+    bottom: 12px;
+    right: 12px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* Print styles - ensure watermark visible in print */
+@media print {
+  .watermarked-image-container .watermark-overlay {
+    display: block !important;
   }
 }
 ```
@@ -582,122 +330,152 @@ export async function getUserById(userId: string) {
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/functions/workers/image-watermark.ts` | Create | Cloudflare Worker for watermark generation |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/watermark/+server.ts` | Create | API endpoint for watermark generation |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/workers/image-watermark.ts` | Create | Worker utilities module |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/db/users.ts` | Create/Verify | User database access function |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/components/ui/WatermarkedImage.tsx` | Create | React component for watermarked image display |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/components/ui/index.ts` | Create/Modify | Export WatermarkedImage component |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/docs/configuration/R2-ACCESS-CONTROL.md` | Create | Documentation for R2 access control strategy |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/pages/ArtworkPage.tsx` | Modify | Update to use WatermarkedImage component |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/styles/watermark.css` | Create | Optional CSS enhancements for watermark |
 
 ## Verification
 
-### Test 1: Generate Watermarked Image
+### Test 1: Component Renders with Watermark
 ```bash
-curl -X POST http://localhost:5173/api/artworks/watermark \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "originalKey": "originals/<userId>/<uuid>.jpg",
-    "userId": "<userId>",
-    "uuid": "<uuid>",
-    "artistUsername": "jane_doe"
-  }'
+# In React component or test file
+import { WatermarkedImage } from '@/components/ui/WatermarkedImage';
 
-# Expected Response:
-# {
-#   "success": true,
-#   "displayUrl": "https://images.yourdomain.com/display/<userId>/<uuid>.jpg",
-#   "displayKey": "display/<userId>/<uuid>.jpg",
-#   "processingTime": 3200
-# }
+// Verify watermark text appears in DOM
+render(
+  <WatermarkedImage
+    imageKey="user123/artwork-uuid.jpg"
+    artistName="jane_doe"
+    alt="Test Artwork"
+  />
+);
+
+// Expected: Image rendered with watermark overlay showing "© jane_doe"
 ```
 
-### Test 2: Verify Watermark Visibility
-```bash
-curl -o watermarked.jpg "https://images.yourdomain.com/display/<userId>/<uuid>.jpg"
+### Test 2: Right-Click Context Menu Disabled
+1. Navigate to artwork detail page
+2. Right-click on the watermarked image
+3. Verify: Context menu does NOT appear (or shows custom message if implemented)
 
-# Display the image and visually verify:
-# - Watermark appears in bottom-right corner
-# - Text readable (white text with semi-transparent background)
-# - Artist username displayed correctly with © symbol
-# - No distortion of underlying image
+### Test 3: Image URL Uses Display Variant
+1. Open browser DevTools (Network tab)
+2. Display an artwork with WatermarkedImage component
+3. Verify: Image URL is `https://images.vfa.gallery/display/{userId}/{uuid}.jpg`
+4. Verify: No requests to `originals/` prefix paths
+
+### Test 4: Watermark Visibility at Different Sizes
+Test with various image dimensions:
+- Small (800x600): Watermark readable, appropriate size
+- Medium (2000x1500): Watermark proportional, readable
+- Large (4000x3000): Watermark not overwhelming, bottom-right positioned correctly
+- Mobile (< 768px): Watermark scales appropriately per CSS media query
+
+### Test 5: Watermark with Special Characters
+```typescript
+<WatermarkedImage
+  imageKey="user456/artwork.jpg"
+  artistName="josé_garcía"
+  alt="Test"
+/>
+
+// Expected: Watermark displays "© josé_garcía" with proper character rendering
 ```
 
-### Test 3: Test Various Image Sizes
-Upload images of different dimensions and verify watermark scales appropriately:
-- 800x600 (small)
-- 2000x1500 (medium)
-- 4000x3000 (large)
-
-Watermark should be readable and appropriately sized at each scale.
-
-### Test 4: Test Special Characters in Username
+### Test 6: R2 Access Control Verification
 ```bash
-curl -X POST http://localhost:5173/api/artworks/watermark \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "originalKey": "originals/<userId>/<uuid>.jpg",
-    "userId": "<userId>",
-    "uuid": "<uuid>",
-    "artistUsername": "josé_garcía"
-  }'
+# Attempt to access originals prefix directly
+curl -I "https://images.vfa.gallery/originals/userId/uuid.jpg"
 
-# Verify watermark renders with special characters
+# Expected Response: 403 Forbidden (or 404 if Transform Rule blocks)
+
+# Attempt to access display prefix
+curl -I "https://images.vfa.gallery/display/userId/uuid.jpg"
+
+# Expected Response: 200 OK with image headers
 ```
 
-### Test 5: Test Long Usernames
-```bash
-# Test with 50 character username (max)
-# Test with 51 character username (should error)
+### Test 7: Component Props Validation
+Test with various prop combinations:
+- With width/height: `<WatermarkedImage width={500} height={400} ... />`
+- With custom className: `<WatermarkedImage className="gallery-image" ... />`
+- With priority flag: `<WatermarkedImage priority={true} ... />`
 
-curl -X POST http://localhost:5173/api/artworks/watermark \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "originalKey": "originals/<userId>/<uuid>.jpg",
-    "userId": "<userId>",
-    "uuid": "<uuid>",
-    "artistUsername": "this_is_a_very_long_artist_name_that_exceeds_the_fifty_character_limit"
-  }'
+All variations should render correctly with watermark overlay.
 
-# Expected: 400 error
-```
-
-### Test 6: Auto-fetch Username from Database
-```bash
-# Send request without artistUsername
-curl -X POST http://localhost:5173/api/artworks/watermark \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "originalKey": "originals/<userId>/<uuid>.jpg",
-    "userId": "<userId>",
-    "uuid": "<uuid>"
-  }'
-
-# Should fetch username from database and apply watermark
-```
-
-### Test 7: Verify Watermark with Various Background Colors
-- Upload image with light background
-- Upload image with dark background
-- Upload image with varied colors
-
-Watermark should be readable on all backgrounds (semi-transparent bg ensures contrast).
-
-### Test 8: Verify File in R2
-```bash
-aws s3 ls s3://$BUCKET/display/<userId>/ --endpoint-url $R2_ENDPOINT
-
-# Should see: <uuid>.jpg
-```
+### Test 8: Watermark Positioning
+1. Render watermarked image at fullscreen
+2. Verify watermark stays in bottom-right corner with 16px padding
+3. Verify watermark never overlaps critical artwork content
+4. Verify watermark remains visible on images with dark bottom-right areas (semi-transparent background ensures readability)
 
 ## Notes
-- Watermark text always includes © symbol before username
-- Font size scales with image: calculated as imageWidth / 20 (capped between 24-96px)
-- Semi-transparent black background ensures readability on any image
-- White text provides contrast against background
-- Bottom-right corner position is standard for watermarks and doesn't interfere with content focus (usually center)
-- Watermark adds minimal file size overhead
-- 85% JPEG quality maintains visual quality while reducing file size
-- Consider offering watermark customization options in future (position, opacity, format)
-- Logo watermark option could be added as enhancement
+
+### Design Decisions
+
+**CSS-Based Over Server-Side Watermarking**:
+- Jimp library incompatible with Cloudflare Workers (CPU-bound, large memory)
+- CSS approach leverages frontend capabilities without server processing
+- Aligns with Hono/Cloudflare Pages architecture (serverless, stateless)
+- Watermark styling centralized in component, easy to customize
+
+**Pointer-Events: None**:
+- Makes watermark layer non-interactive
+- Users cannot accidentally click watermark instead of image
+- Image remains fully clickable and interactive
+
+**Right-Click Disabled**:
+- Prevents direct image save via right-click > Save As
+- Does not prevent advanced users with dev tools from accessing URL
+- Acceptable trade-off: URL itself doesn't contain originals (blocked at CDN level)
+
+**R2 Prefix Strategy**:
+- `originals/` stored but never publicly accessible
+- `display/` prefix served via CDN, this is the only public image path
+- Prevents accidental exposure of original files
+- Allows future server-side transformations if needed
+
+**Watermark Styling Rationale**:
+- Semi-transparent black background (rgba 0,0,0,0.5) ensures text contrast on any background
+- White text (rgba 255,255,255,0.9) provides readability
+- Bottom-right position: standard for watermarks, doesn't interfere with artwork focus (usually center)
+- Text shadow adds subtle depth and readability
+- No animation or hover effects: keeps performance optimal, maintains accessibility
+
+### Future Enhancements
+
+1. **Canvas-Based Watermarking**: For stronger protection against right-click save
+   - Trade-off: Added complexity, larger bundle, potential performance impact
+   - Revisit if gallery experiences significant unauthorized redistribution
+
+2. **Watermark Customization**:
+   - Per-artist watermark style preferences
+   - Gallery-level watermark branding (e.g., "VFA Gallery" in corner)
+   - Artist opt-in/opt-out for watermarking
+
+3. **Digital Rights Management (DRM)**:
+   - Metadata embedding (EXIF) with artist info
+   - License information in metadata
+   - Blockchain-based verification (future)
+
+4. **Cloudflare Image Transformations**:
+   - If future requirements demand server-side watermarking without Jimp
+   - Use CF Image Transform `draw` parameter with overlay image in same zone
+   - URL example: `https://images.vfa.gallery/display/{userId}/{uuid}.jpg?draw=overlay`
+
+### Performance Considerations
+
+- Watermark overlay is CSS-only: zero performance impact
+- Image lazy-loading supported via `loading` prop
+- Watermark applied at render time (not image download time)
+- Bundle size: WatermarkedImage component ~2KB uncompressed
+
+### Accessibility
+
+- Image alt text preserved and required
+- Watermark text not announced by screen readers (appropriate, as it's decorative overlay)
+- Semantic HTML structure maintained
+- Keyboard navigation unaffected
+- Color contrast sufficient for WCAG AA compliance

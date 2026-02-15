@@ -1,131 +1,37 @@
 # 36-WORKER-IMAGE-UPLOAD-URL.md
 
 ## Goal
-Generate presigned R2 upload URLs that allow clients to upload images directly to Cloudflare R2 storage without passing files through the application server.
+Handle artwork image uploads directly through a Hono API endpoint that stores originals to Cloudflare R2. Variant images (thumbnails, icons, displays) are generated on-the-fly via Cloudflare Image Transformations using URL parameters—no separate storage needed.
 
 ## Spec Extract
-- **API Endpoint**: POST /api/artworks/upload-url
+- **API Endpoint**: POST /api/artworks/upload
 - **Accepted Content Types**: image/jpeg, image/png, image/gif, image/webp
-- **Upload Limit**: 5MB per image
-- **URL Validity**: 15 minutes
-- **Storage Path Pattern**: originals/{userId}/{uuid}.jpg
-- **R2 Bucket**: env.BUCKET
+- **Upload Limit**: 10MB per image
+- **Storage Path Pattern**: originals/{userId}/{uuid}.{ext}
+- **R2 Bucket**: Native binding `c.env.IMAGE_BUCKET`
+- **CDN Domain**: https://images.vfa.gallery
+- **Image Variants**: Generated on-the-fly via Cloudflare Image Transformations (no presigned URLs, no storage overhead)
 
 ## Prerequisites
-- Build 15: Database schema for artworks table (userId, S3/R2 keys)
-- Build 05: Environment configuration (BUCKET, R2 credentials)
+- Build 15: Database schema for artworks table
+- Build 05: Environment configuration with R2 bucket binding
+- Build 30+: HonoEnv type and auth middleware setup
+- Cloudflare Image Transformations enabled on R2 bucket
 
 ## Steps
 
-### 1. Create API Route Handler
+### 1. Create Artworks Router with Upload Endpoint
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/upload.ts`
-
-```typescript
-import { json, type RequestHandler } from '@sveltejs/kit';
-import { v4 as uuidv4 } from 'uuid';
-import { auth } from '$lib/server/auth';
-import { validateContentType, generatePresignedUrl } from '$lib/server/r2-utils';
-
-export const POST: RequestHandler = async ({ request, locals }) => {
-  try {
-    // Authenticate user
-    const session = await auth.getSession(request);
-    if (!session?.user?.id) {
-      return json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
-
-    // Parse request body
-    const body = await request.json().catch(() => ({}));
-    const { filename, contentType } = body;
-
-    // Validate inputs
-    if (!filename || !contentType) {
-      return json(
-        { error: 'Missing filename or contentType' },
-        { status: 400 }
-      );
-    }
-
-    if (!validateContentType(contentType)) {
-      return json(
-        { error: 'Invalid content type. Allowed: image/jpeg, image/png, image/gif, image/webp' },
-        { status: 400 }
-      );
-    }
-
-    // Generate unique key for R2
-    const uuid = uuidv4();
-    const fileExtension = getFileExtension(contentType);
-    const key = `originals/${userId}/${uuid}${fileExtension}`;
-
-    // Generate presigned upload URL (valid for 15 minutes)
-    const uploadUrl = await generatePresignedUrl({
-      key,
-      contentType,
-      expirationSeconds: 15 * 60, // 15 minutes
-      method: 'PUT'
-    });
-
-    if (!uploadUrl) {
-      return json(
-        { error: 'Failed to generate upload URL' },
-        { status: 500 }
-      );
-    }
-
-    // Return upload URL and key for client
-    return json({
-      uploadUrl,
-      key,
-      expiresIn: 15 * 60,
-      contentType
-    });
-
-  } catch (error) {
-    console.error('Upload URL generation error:', error);
-    return json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-};
-
-function getFileExtension(contentType: string): string {
-  const typeMap: Record<string, string> = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/gif': '.gif',
-    'image/webp': '.webp'
-  };
-  return typeMap[contentType] || '.jpg';
-}
-```
-
-### 2. Create R2 Utilities Module
-
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/r2-utils.ts`
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts`
 
 ```typescript
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Hono } from 'hono'
+import type { HonoEnv } from '../../../types/env'
+import { Errors } from '../errors'
+import { requireAuth, getCurrentUser } from '../middleware/auth'
+import { createArtwork } from '../../db/artworks'
 
-// Initialize S3 client configured for R2
-const s3Client = new S3Client({
-  region: 'auto',
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || ''
-  },
-  endpoint: process.env.R2_ENDPOINT || ''
-});
-
-const BUCKET = process.env.BUCKET || 'site-prod';
+const artworks = new Hono<HonoEnv>()
 
 // Allowed MIME types for uploads
 const ALLOWED_CONTENT_TYPES = [
@@ -133,89 +39,202 @@ const ALLOWED_CONTENT_TYPES = [
   'image/png',
   'image/gif',
   'image/webp'
-];
+]
 
-export function validateContentType(contentType: string): boolean {
-  return ALLOWED_CONTENT_TYPES.includes(contentType);
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
+function validateContentType(contentType: string): boolean {
+  return ALLOWED_CONTENT_TYPES.includes(contentType)
 }
 
-export async function generatePresignedUrl({
-  key,
-  contentType,
-  expirationSeconds = 900,
-  method = 'PUT'
-}: {
-  key: string;
-  contentType: string;
-  expirationSeconds?: number;
-  method?: 'PUT' | 'GET';
-}): Promise<string | null> {
-  try {
-    const command = new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      ContentType: contentType,
-      // Optional: Set metadata
-      Metadata: {
-        'generated-at': new Date().toISOString()
-      }
-    });
-
-    const url = await getSignedUrl(s3Client, command, {
-      expiresIn: expirationSeconds
-    });
-
-    return url;
-  } catch (error) {
-    console.error('Failed to generate presigned URL:', error);
-    return null;
+function getFileExtension(contentType: string): string {
+  const typeMap: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp'
   }
+  return typeMap[contentType] || 'jpg'
 }
 
-export function getS3Client(): S3Client {
-  return s3Client;
-}
+/**
+ * POST /api/artworks/upload
+ * Upload artwork image to R2
+ */
+artworks.post('/upload', requireAuth, async (c) => {
+  const authUser = getCurrentUser(c)
+  if (!authUser) {
+    throw Errors.unauthorized()
+  }
 
-export const R2_CONFIG = {
-  bucket: BUCKET,
-  endpoint: process.env.R2_ENDPOINT,
-  allowedContentTypes: ALLOWED_CONTENT_TYPES
-};
+  // Parse form data
+  let formData: FormData
+  try {
+    formData = await c.req.formData()
+  } catch {
+    throw Errors.badRequest('Invalid form data')
+  }
+
+  const file = formData.get('file')
+  if (!file || !(file instanceof File)) {
+    throw Errors.badRequest('File is required', { field: 'file' })
+  }
+
+  // Validate content type
+  if (!validateContentType(file.type)) {
+    throw Errors.badRequest('Invalid content type. Allowed: image/jpeg, image/png, image/gif, image/webp', {
+      field: 'file',
+      contentType: file.type
+    })
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    throw Errors.badRequest('File size exceeds 10MB limit', {
+      field: 'file',
+      maxSize: MAX_FILE_SIZE,
+      actualSize: file.size
+    })
+  }
+
+  // Upload to R2
+  const bucket = c.env.IMAGE_BUCKET
+  if (!bucket) {
+    throw Errors.internal('Image bucket not configured')
+  }
+
+  try {
+    // Generate unique filename using crypto.randomUUID
+    const uuid = crypto.randomUUID()
+    const extension = getFileExtension(file.type)
+    const key = `originals/${authUser.userId}/${uuid}.${extension}`
+
+    // Read file as ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer()
+
+    // Upload to R2
+    await bucket.put(key, arrayBuffer, {
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: 'public, max-age=31536000'
+      }
+    })
+
+    // Build public CDN URL
+    const cdnUrl = `https://images.vfa.gallery/${key}`
+
+    return c.json({
+      key,
+      cdnUrl,
+      contentType: file.type,
+      size: file.size
+    })
+  } catch (err) {
+    if (err instanceof Error) {
+      console.error('[Artwork Upload] Error:', err.message)
+    }
+    throw Errors.internal('Failed to upload image')
+  }
+})
+
+export { artworks }
 ```
 
-### 3. Add Route to SvelteKit Server Configuration
+### 2. Mount Artworks Router in Main App
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/upload-url/+server.ts`
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/index.ts`
+
+Add the artworks router to your main Hono app instance:
 
 ```typescript
-import { POST } from '$lib/api/routes/upload';
+import { artworks } from './routes/artworks'
 
-export { POST };
+// ... other imports and setup
+
+// Mount routers
+app.route('/artworks', artworks)
 ```
 
-### 4. Update Environment Configuration
+### 3. Image Transformation URL Patterns (For Client Use)
 
-**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/.env.example`
+Since Cloudflare Image Transformations handles variants on-the-fly, clients use the base URL with optional transformation parameters:
 
-Add these variables:
+```typescript
+// Base original (full size)
+const originalUrl = 'https://images.vfa.gallery/originals/{userId}/{uuid}.jpg'
+
+// Thumbnail (e.g., 200x200)
+const thumbnailUrl = 'https://images.vfa.gallery/originals/{userId}/{uuid}.jpg?width=200&height=200&fit=cover'
+
+// Icon (e.g., 64x64)
+const iconUrl = 'https://images.vfa.gallery/originals/{userId}/{uuid}.jpg?width=64&height=64&fit=cover'
+
+// Display (e.g., 800x600, optimized)
+const displayUrl = 'https://images.vfa.gallery/originals/{userId}/{uuid}.jpg?width=800&height=600&fit=scale-down'
 ```
-# Cloudflare R2 Configuration
-R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_ACCESS_KEY_ID=your_access_key_here
-R2_SECRET_ACCESS_KEY=your_secret_key_here
-BUCKET=site-prod
-```
 
-### 5. Update package.json Dependencies
+No separate variant files are stored. Cloudflare Image Transformations generates them on-the-fly and caches the results.
 
-Verify these are installed:
-```json
-{
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.x.x",
-    "@aws-sdk/s3-request-presigner": "^3.x.x",
-    "uuid": "^9.x.x"
+### 4. Validation Module
+
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/validation/artworks.ts`
+
+```typescript
+const ALLOWED_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp'
+]
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
+export function validateArtworkImageUpload(file: File): string[] {
+  const errors: string[] = []
+
+  if (!file) {
+    errors.push('File is required')
+    return errors
   }
+
+  if (!ALLOWED_CONTENT_TYPES.includes(file.type)) {
+    errors.push(`Invalid content type: ${file.type}. Allowed: image/jpeg, image/png, image/gif, image/webp`)
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    errors.push(`File size exceeds 10MB limit (current: ${Math.round(file.size / 1024 / 1024)}MB)`)
+  }
+
+  return errors
+}
+```
+
+### 5. Update Environment Configuration
+
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/wrangler.toml`
+
+Ensure R2 bucket binding is configured:
+
+```toml
+[[r2_buckets]]
+binding = "IMAGE_BUCKET"
+bucket_name = "your-bucket-name"
+preview = true
+```
+
+**File**: `/Volumes/DataSSD/gitsrc/vfa_gallery/src/types/env.ts`
+
+Ensure HonoEnv includes the R2 bucket binding:
+
+```typescript
+export type CloudFlareEnv = {
+  DB: D1Database
+  IMAGE_BUCKET: R2Bucket
+  // ... other bindings
+}
+
+export type HonoEnv = {
+  Bindings: CloudFlareEnv
 }
 ```
 
@@ -223,77 +242,87 @@ Verify these are installed:
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/upload.ts` | Create | POST endpoint handler |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/server/r2-utils.ts` | Create | R2 presigned URL generation |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/upload-url/+server.ts` | Create | SvelteKit route bridge |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/.env.example` | Modify | Add R2 environment variables |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/package.json` | Verify | Ensure AWS SDK dependencies exist |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Create | Hono router with upload endpoint |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/validation/artworks.ts` | Create | File validation utilities |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/index.ts` | Modify | Mount artworks router |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/types/env.ts` | Verify | Ensure HonoEnv has IMAGE_BUCKET binding |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/wrangler.toml` | Verify | Ensure R2 bucket binding exists |
 
 ## Verification
 
-### Test 1: Get Upload URL
+### Test 1: Upload Image
 ```bash
-curl -X POST http://localhost:5173/api/artworks/upload-url \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "filename": "my-artwork.jpg",
-    "contentType": "image/jpeg"
-  }'
+# Create a test image file first
+echo "fake image data" > test-image.jpg
 
-# Expected Response:
+curl -X POST http://localhost:8787/api/artworks/upload \
+  -H "Authorization: Bearer <valid-token>" \
+  -F "file=@test-image.jpg"
+
+# Expected Response (200 OK):
 # {
-#   "uploadUrl": "https://<bucket>.r2.cloudflarestorage.com/...",
 #   "key": "originals/<userId>/<uuid>.jpg",
-#   "expiresIn": 900,
-#   "contentType": "image/jpeg"
+#   "cdnUrl": "https://images.vfa.gallery/originals/<userId>/<uuid>.jpg",
+#   "contentType": "image/jpeg",
+#   "size": 15
 # }
 ```
 
-### Test 2: Upload to R2
+### Test 2: Verify Image Accessibility
 ```bash
-# Use the uploadUrl from Test 1
-curl -X PUT "<uploadUrl>" \
-  -H "Content-Type: image/jpeg" \
-  --data-binary @test-image.jpg
+# Use cdnUrl from Test 1
+curl -I https://images.vfa.gallery/originals/<userId>/<uuid>.jpg
 
-# Expected: 200 OK response from R2
+# Expected: 200 OK with content-type: image/jpeg
 ```
 
-### Test 3: Verify URL Expiration
-- Request upload URL
-- Wait 16 minutes
-- Attempt to use expired URL
-- Should receive 403 Forbidden from R2
+### Test 3: Test Image Transformation
+```bash
+# Request thumbnail variant
+curl -I "https://images.vfa.gallery/originals/<userId>/<uuid>.jpg?width=200&height=200&fit=cover"
+
+# Expected: 200 OK (Cloudflare transforms and caches the result)
+```
 
 ### Test 4: Invalid Content Type
 ```bash
-curl -X POST http://localhost:5173/api/artworks/upload-url \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "filename": "my-file.txt",
-    "contentType": "text/plain"
-  }'
+# Create a text file
+echo "not an image" > test-file.txt
 
-# Expected: 400 error with message about invalid content type
+curl -X POST http://localhost:8787/api/artworks/upload \
+  -H "Authorization: Bearer <valid-token>" \
+  -F "file=@test-file.txt"
+
+# Expected: 400 Bad Request with error about invalid content type
 ```
 
-### Test 5: Missing Authentication
+### Test 5: File Size Validation
 ```bash
-curl -X POST http://localhost:5173/api/artworks/upload-url \
-  -H "Content-Type: application/json" \
-  -d '{
-    "filename": "my-artwork.jpg",
-    "contentType": "image/jpeg"
-  }'
+# Create a large file (e.g., 11MB)
+dd if=/dev/zero of=large-file.jpg bs=1M count=11
+
+curl -X POST http://localhost:8787/api/artworks/upload \
+  -H "Authorization: Bearer <valid-token>" \
+  -F "file=@large-file.jpg"
+
+# Expected: 400 Bad Request with error about size limit
+```
+
+### Test 6: Missing Authentication
+```bash
+curl -X POST http://localhost:8787/api/artworks/upload \
+  -F "file=@test-image.jpg"
 
 # Expected: 401 Unauthorized
 ```
 
 ## Notes
-- Presigned URLs are valid for exactly 15 minutes (900 seconds)
-- Client must use PUT method with the exact Content-Type specified in request
-- Unique UUIDs prevent filename collisions between users
-- User ID in path enables easy per-user storage organization
-- R2 bucket credentials should be restricted to allow only PUT/GET on image paths
+- Files are stored at `originals/{userId}/{uuid}.{ext}` for organization and deduplication
+- UUIDs (via `crypto.randomUUID()`) prevent filename collisions
+- Cloudflare Image Transformations generates variants on-the-fly—no separate files stored
+- CDN caching header set to 1 year (public immutable content)
+- Client passes multipart form data with `file` field containing the image
+- Endpoint validates both content type and file size before uploading to R2
+- Error handling uses the `Errors` factory for consistent response format
+- Authentication is required via `requireAuth` middleware
+- All responses include the R2 key and public CDN URL for immediate use

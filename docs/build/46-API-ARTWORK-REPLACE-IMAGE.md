@@ -1,536 +1,266 @@
 # 46-API-ARTWORK-REPLACE-IMAGE.md
 
 ## Goal
-Implement the POST `/api/artworks/:id/replace-image` endpoint that allows artwork owners to replace the original image with a new one, triggers the complete image processing pipeline for all variants, and updates all image URLs while optionally cleaning up old images from R2.
+Implement the POST `/api/artworks/:id/replace-image` endpoint that allows artwork owners to replace the original image with a new one, update the image_key in the database, and optionally delete the old image from R2. Since we use Cloudflare Image Transformations for on-the-fly rendering, only the single image_key is stored in the DB; generated URLs are built dynamically.
 
 ---
 
 ## Spec Extract
 
 From TECHNICAL-SPEC.md:
-- **Image Processing Pipeline**: Generates display (watermarked), thumbnail, and icon variants
-- **Image Replacement**: Update original and all derived images without affecting metadata
-- **Storage**: R2 bucket with organized paths (originals/, display/, thumbnails/, icons/)
+- **Image Storage**: R2 bucket stores only the original image via `image_key` (path to file in R2)
+- **Image Transformations**: Cloudflare Image Transformations handles all variants (display, thumbnail, icon) dynamically
+- **Image Replacement**: Update `image_key` and `updated_at` only; no separate variant files
 - **Protection**: Only owners can replace images
+- **Cleanup**: Optionally delete old image from R2 (single file, not multiple variants)
 
 Request schema:
 ```json
 {
-  "originalKey": "originals/user-id/new-uuid.jpg"
+  "imageKey": "originals/{userId}/{uuid}.jpg"
 }
 ```
 
-Response: Updated artwork object with new image URLs
+Response: Updated artwork object with newly generated image URLs.
 
 ---
 
 ## Prerequisites
 
 **Must complete before starting:**
-- **40-IMAGE-PIPELINE-ORCHESTRATION.md** - Image processing orchestration service
 - **43-API-ARTWORK-GET.md** - GET endpoint and authorization patterns
 - **36-WORKER-IMAGE-UPLOAD-URL.md** - R2 upload URL generation
+- **Core Setup** - Hono router, D1 database, R2 binding, auth middleware
 
 ---
 
 ## Steps
 
-### Step 1: Create Image Replacement Service
+### Step 1: Add Replace Image Endpoint to Artworks Router
 
-Build service module for image replacement with pipeline orchestration.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/imageReplacement.ts`
-
-```typescript
-import type { D1Database } from '@cloudflare/workers-types'
-import { ImageProcessorService, type ImageProcessingResult } from './imageProcessor'
-
-/**
- * Image replacement result
- */
-export interface ImageReplacementResult {
-  success: boolean
-  artworkId: string
-  newImageUrls: ImageProcessingResult
-  oldImageUrls: {
-    originalUrl: string
-    displayUrl: string
-    thumbnailUrl: string
-    iconUrl: string
-  }
-  timestamp: string
-}
-
-/**
- * Image replacement service
- */
-export class ImageReplacementService {
-  private db: D1Database
-  private imageProcessor: ImageProcessorService
-
-  constructor(db: D1Database, imageProcessor: ImageProcessorService) {
-    this.db = db
-    this.imageProcessor = imageProcessor
-  }
-
-  /**
-   * Replace artwork image with new one
-   *
-   * Process:
-   * 1. Verify artwork exists and is owned by user
-   * 2. Validate new image key exists in R2
-   * 3. Trigger image processing pipeline
-   * 4. Update artwork with new URLs
-   * 5. Optionally delete old images from R2
-   *
-   * @param artworkId - The artwork ID to update
-   * @param userId - The user ID (must own the artwork)
-   * @param newOriginalKey - R2 key of new original image
-   * @param deleteOldImages - Whether to delete old images from R2 (default: false)
-   * @returns Replacement result with old and new URLs
-   * @throws Error if artwork not found, not owned, or processing fails
-   */
-  async replaceImage(
-    artworkId: string,
-    userId: string,
-    newOriginalKey: string,
-    deleteOldImages: boolean = false,
-    username: string
-  ): Promise<ImageReplacementResult> {
-    try {
-      // Validate input
-      if (!artworkId || !userId || !newOriginalKey) {
-        throw new Error('Missing required parameters')
-      }
-
-      // Fetch artwork to verify ownership and get current URLs
-      const artwork = await this.db
-        .prepare(
-          `SELECT
-             id, user_id, original_url, display_url, thumbnail_url, icon_url
-           FROM artworks
-           WHERE id = ? AND user_id = ?`
-        )
-        .bind(artworkId, userId)
-        .first()
-
-      if (!artwork) {
-        throw new Error('Artwork not found or not owned by user')
-      }
-
-      // Store old URLs for response and deletion
-      const oldImageUrls = {
-        originalUrl: artwork.original_url,
-        displayUrl: artwork.display_url,
-        thumbnailUrl: artwork.thumbnail_url,
-        iconUrl: artwork.icon_url
-      }
-
-      // Validate new image key format
-      this.validateImageKey(newOriginalKey)
-
-      // Trigger image processing pipeline for new image
-      console.log(`Processing new image: ${newOriginalKey}`)
-      const newImageUrls = await this.imageProcessor.processUploadedImage(
-        newOriginalKey,
-        userId,
-        username
-      )
-
-      // Update artwork with new URLs
-      const now = new Date().toISOString()
-      await this.db
-        .prepare(
-          `UPDATE artworks
-           SET original_url = ?,
-               display_url = ?,
-               thumbnail_url = ?,
-               icon_url = ?,
-               updated_at = ?
-           WHERE id = ? AND user_id = ?`
-        )
-        .bind(
-          newImageUrls.originalUrl,
-          newImageUrls.displayUrl,
-          newImageUrls.thumbnailUrl,
-          newImageUrls.iconUrl,
-          now,
-          artworkId,
-          userId
-        )
-        .run()
-
-      // Optionally delete old images from R2
-      if (deleteOldImages) {
-        await this.deleteOldImages(oldImageUrls, userId)
-      }
-
-      return {
-        success: true,
-        artworkId,
-        newImageUrls,
-        oldImageUrls,
-        timestamp: now
-      }
-    } catch (error) {
-      console.error('Error replacing artwork image:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Validate image key format
-   */
-  private validateImageKey(key: string): void {
-    // Should match pattern: originals/userId/uuid.ext
-    const pattern = /^originals\/[a-zA-Z0-9_-]+\/[a-f0-9-]{36}\.[a-z]+$/i
-
-    if (!pattern.test(key)) {
-      throw new Error(
-        'Invalid image key format. Expected: originals/userId/uuid.extension'
-      )
-    }
-  }
-
-  /**
-   * Convert CDN URL back to R2 key
-   */
-  private urlToKey(url: string): string {
-    // Extract path from URL
-    // e.g., https://cdn.vfa.gallery/display/user-id/uuid.jpg -> display/user-id/uuid.jpg
-    const match = url.match(/cdn\.vfa\.gallery\/(.+)$/)
-    return match ? match[1] : url
-  }
-
-  /**
-   * Delete old image variants from R2
-   */
-  private async deleteOldImages(
-    imageUrls: {
-      originalUrl: string
-      displayUrl: string
-      thumbnailUrl: string
-      iconUrl: string
-    },
-    userId: string
-  ): Promise<void> {
-    try {
-      const keysToDelete = [
-        this.urlToKey(imageUrls.originalUrl),
-        this.urlToKey(imageUrls.displayUrl),
-        this.urlToKey(imageUrls.thumbnailUrl),
-        this.urlToKey(imageUrls.iconUrl)
-      ]
-
-      console.log(`Deleting old images for user ${userId}:`, keysToDelete)
-
-      // Call R2 deletion worker or API
-      for (const key of keysToDelete) {
-        await this.deleteFromR2(key)
-      }
-    } catch (error) {
-      console.warn('Error deleting old images from R2:', error)
-      // Don't fail the operation if cleanup fails
-    }
-  }
-
-  /**
-   * Delete a single image from R2
-   */
-  private async deleteFromR2(key: string): Promise<void> {
-    try {
-      const response = await fetch(`${process.env.WORKER_API_BASE_URL}/delete-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.WORKER_AUTH_TOKEN}`
-        },
-        body: JSON.stringify({
-          key,
-          timestamp: new Date().toISOString()
-        })
-      })
-
-      if (!response.ok) {
-        console.warn(`Failed to delete R2 key ${key}: ${response.status}`)
-      }
-    } catch (error) {
-      console.warn(`Error deleting R2 key ${key}:`, error)
-    }
-  }
-
-  /**
-   * Get current image URLs for artwork
-   */
-  async getCurrentImageUrls(artworkId: string, userId: string): Promise<any> {
-    const artwork = await this.db
-      .prepare(
-        `SELECT original_url, display_url, thumbnail_url, icon_url
-         FROM artworks
-         WHERE id = ? AND user_id = ?`
-      )
-      .bind(artworkId, userId)
-      .first()
-
-    if (!artwork) {
-      throw new Error('Artwork not found')
-    }
-
-    return {
-      originalUrl: artwork.original_url,
-      displayUrl: artwork.display_url,
-      thumbnailUrl: artwork.thumbnail_url,
-      iconUrl: artwork.icon_url
-    }
-  }
-}
-```
-
-### Step 2: Add Replace Image Endpoint
-
-Create the POST handler for image replacement.
+Add the POST handler to the existing artworks router.
 
 **File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` (Update existing file)
 
-Add this handler:
+Append this handler:
 
 ```typescript
-import { json, type RequestHandler } from '@sveltejs/kit'
-import { auth } from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import { ImageProcessorService } from '$lib/api/services/imageProcessor'
-import { ImageReplacementService } from '$lib/api/services/imageReplacement'
+import { HonoEnv } from '../../../types/env'
+import { Errors } from '../errors'
+import { requireAuth, getCurrentUser } from '../middleware/auth'
+import { Context } from 'hono'
 
 /**
  * POST /api/artworks/:id/replace-image
- * Replace artwork image with a new one
+ * Replace artwork's original image with a new one
  *
  * Request body:
  * {
- *   "originalKey": "originals/user-id/new-uuid.jpg",
- *   "deleteOldImages": false (optional, default: false)
+ *   "imageKey": "originals/{userId}/{uuid}.jpg"
  * }
  *
- * Process:
- * 1. Validate new image exists in R2
- * 2. Trigger processing pipeline for new image
- * 3. Update artwork URLs
- * 4. Optionally delete old images
+ * Behavior:
+ * 1. Verify authenticated user owns the artwork
+ * 2. Validate new image exists in R2 via HEAD request
+ * 3. Extract userId from imageKey path and validate it matches authenticated user
+ * 4. Update image_key and updated_at in database
+ * 5. Optionally delete old image from R2 (if oldImageKey provided)
+ * 6. Return updated artwork with newly generated URLs
  *
- * Response codes:
+ * Response:
+ * {
+ *   "id": "...",
+ *   "image_key": "originals/{userId}/{uuid}.jpg",
+ *   "thumbnail_url": "https://cdn.vfa.gallery/...",
+ *   "icon_url": "https://cdn.vfa.gallery/...",
+ *   "display_url": "https://cdn.vfa.gallery/...",
+ *   ...
+ * }
+ *
+ * Status codes:
  * - 200: Image replaced successfully
- * - 400: Invalid request or validation error
+ * - 400: Invalid request, validation error, or new image doesn't exist
  * - 401: Not authenticated
  * - 403: Not authorized (don't own artwork)
  * - 404: Artwork not found
  * - 500: Server error
  */
-export const replaceImageHandler: RequestHandler = async ({ url, request, platform }) => {
+export async function replaceImage(c: Context<HonoEnv>) {
   try {
-    // Authenticate user
-    const session = await auth.getSession(request)
-    if (!session?.user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await requireAuth(c)
+    if (!user) {
+      return c.json(Errors.unauthorized(), { status: 401 })
     }
 
-    const userId = session.user.id
-    const username = session.user.username
-
-    // Extract artwork ID from URL
-    const pathParts = url.pathname.split('/')
-    const artworkId = pathParts[pathParts.length - 2] // /api/artworks/:id/replace-image
-
+    const artworkId = c.req.param('id')
     if (!artworkId) {
-      return json({ error: 'Missing artwork ID' }, { status: 400 })
+      return c.json(Errors.validation('Missing artwork ID in path'), { status: 400 })
     }
 
     // Parse request body
-    const body = await request.json().catch(() => ({}))
-    const { originalKey, deleteOldImages = false } = body
-
-    if (!originalKey) {
-      return json({ error: 'Missing originalKey in request body' }, { status: 400 })
+    let body: { imageKey?: string; oldImageKey?: string }
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json(Errors.validation('Invalid JSON body'), { status: 400 })
     }
 
-    // Initialize services
-    const imageProcessor = new ImageProcessorService(
-      db,
-      platform.env.KV,
-      process.env.WORKER_API_BASE_URL || 'https://workers.example.com'
-    )
+    const { imageKey, oldImageKey } = body
 
-    const replacementService = new ImageReplacementService(db, imageProcessor)
+    if (!imageKey || typeof imageKey !== 'string') {
+      return c.json(Errors.validation('imageKey (string) is required'), { status: 400 })
+    }
 
-    // Perform replacement
-    const result = await replacementService.replaceImage(
-      artworkId,
-      userId,
-      originalKey,
-      deleteOldImages === true,
-      username
-    )
-
-    // Fetch updated artwork for response
-    const artwork = await db
-      .prepare(
-        `SELECT * FROM artworks WHERE id = ? AND user_id = ?`
+    // Validate image key format: originals/{userId}/{uuid}.{ext}
+    const keyPattern = /^originals\/([a-zA-Z0-9_-]+)\/[a-f0-9-]{36}\.[a-z]+$/i
+    const match = imageKey.match(keyPattern)
+    if (!match) {
+      return c.json(
+        Errors.validation('Invalid imageKey format. Expected: originals/{userId}/{uuid}.extension'),
+        { status: 400 }
       )
-      .bind(artworkId, userId)
+    }
+
+    const userIdFromKey = match[1]
+
+    // Verify userId in key matches authenticated user
+    if (userIdFromKey !== user.id) {
+      return c.json(
+        Errors.validation('imageKey must belong to the authenticated user'),
+        { status: 400 }
+      )
+    }
+
+    // Get R2 bucket
+    const bucket = c.env.IMAGE_BUCKET
+    if (!bucket) {
+      console.error('IMAGE_BUCKET binding not configured')
+      return c.json(Errors.server('Image storage not available'), { status: 500 })
+    }
+
+    // Verify new image exists in R2
+    try {
+      const headResponse = await bucket.head(imageKey)
+      if (!headResponse) {
+        return c.json(
+          Errors.validation('Specified image does not exist in R2'),
+          { status: 400 }
+        )
+      }
+    } catch (error) {
+      console.error('Error checking image existence:', error)
+      return c.json(
+        Errors.validation('Specified image does not exist in R2'),
+        { status: 400 }
+      )
+    }
+
+    // Get artwork from database
+    const db = c.env.DB
+    const artwork = await db
+      .prepare('SELECT id, user_id, image_key FROM artworks WHERE id = ?')
+      .bind(artworkId)
       .first()
 
     if (!artwork) {
-      return json({ error: 'Artwork not found' }, { status: 404 })
+      return c.json(Errors.notFound('Artwork not found'), { status: 404 })
     }
 
-    return json(
-      {
-        success: true,
-        message: 'Image replaced successfully',
-        data: formatArtworkResponse(artwork),
-        replacement: {
-          newImageUrls: result.newImageUrls,
-          oldImageUrls: result.oldImageUrls,
-          oldImagesDeleted: deleteOldImages,
-          timestamp: result.timestamp
-        }
-      },
-      { status: 200 }
-    )
+    // Verify user owns this artwork
+    if (artwork.user_id !== user.id) {
+      return c.json(Errors.forbidden('Not authorized to update this artwork'), { status: 403 })
+    }
+
+    // Store old image key for potential cleanup
+    const oldImage = artwork.image_key
+
+    // Update artwork with new image_key and updated_at
+    const now = new Date().toISOString()
+    await db
+      .prepare('UPDATE artworks SET image_key = ?, updated_at = ? WHERE id = ?')
+      .bind(imageKey, now, artworkId)
+      .run()
+
+    // Optionally delete old image from R2
+    // Only attempt if oldImageKey is provided or we have the stored old image
+    if (oldImageKey || oldImage) {
+      const keyToDelete = oldImageKey || oldImage
+      try {
+        await bucket.delete(keyToDelete)
+        console.log(`Deleted old image from R2: ${keyToDelete}`)
+      } catch (error) {
+        console.warn(`Failed to delete old image ${keyToDelete}:`, error)
+        // Don't fail the operation if cleanup fails
+      }
+    }
+
+    // Fetch updated artwork for response
+    const updated = await db
+      .prepare('SELECT * FROM artworks WHERE id = ?')
+      .bind(artworkId)
+      .first()
+
+    if (!updated) {
+      return c.json(Errors.notFound('Artwork not found after update'), { status: 404 })
+    }
+
+    // Build response with generated image URLs
+    const response = formatArtworkResponse(updated)
+
+    return c.json(response, { status: 200 })
   } catch (error) {
     console.error('Error in POST /api/artworks/:id/replace-image:', error)
-
-    if (error instanceof Error) {
-      if (error.message.includes('not found')) {
-        return json({ error: 'Artwork not found' }, { status: 404 })
-      }
-      if (error.message.includes('not owned')) {
-        return json(
-          { error: 'Not authorized to update this artwork' },
-          { status: 403 }
-        )
-      }
-      if (error.message.includes('Invalid')) {
-        return json({ error: error.message }, { status: 400 })
-      }
-    }
-
-    return json(
-      { error: 'Image processing failed. Please try again.' },
-      { status: 500 }
-    )
+    return c.json(Errors.server('Failed to replace image'), { status: 500 })
   }
 }
 
+/**
+ * Format artwork for API response with generated image URLs
+ */
 function formatArtworkResponse(artwork: any) {
+  const imageKey = artwork.image_key
+  const baseUrl = 'https://cdn.vfa.gallery'
+
+  // Generate URLs using Cloudflare Image Transformations
+  // Format: {baseUrl}/cdn-cgi/image/{options}/{imageKey}
+  const displayUrl = `${baseUrl}/cdn-cgi/image/quality=90,width=1200/` + imageKey
+  const thumbnailUrl = `${baseUrl}/cdn-cgi/image/quality=80,width=300,height=300,fit=cover/` + imageKey
+  const iconUrl = `${baseUrl}/cdn-cgi/image/quality=80,width=100,height=100,fit=cover/` + imageKey
+
   return {
     id: artwork.id,
-    userId: artwork.user_id,
+    user_id: artwork.user_id,
     slug: artwork.slug,
     title: artwork.title,
-    description: artwork.description,
-    materials: artwork.materials,
-    dimensions: artwork.dimensions,
-    createdDate: artwork.created_date,
-    category: artwork.category,
+    description: artwork.description || null,
+    materials: artwork.materials || null,
+    dimensions: artwork.dimensions || null,
+    created_date: artwork.created_date || null,
+    category: artwork.category || null,
     tags: artwork.tags ? JSON.parse(artwork.tags) : [],
-    originalUrl: artwork.original_url,
-    displayUrl: artwork.display_url,
-    thumbnailUrl: artwork.thumbnail_url,
-    iconUrl: artwork.icon_url,
+    image_key: imageKey,
+    display_url: displayUrl,
+    thumbnail_url: thumbnailUrl,
+    icon_url: iconUrl,
     status: artwork.status,
-    isFeatured: artwork.is_featured,
-    createdAt: artwork.created_at,
-    updatedAt: artwork.updated_at
+    is_featured: artwork.is_featured || false,
+    created_at: artwork.created_at,
+    updated_at: artwork.updated_at
   }
 }
 ```
 
-### Step 3: Add Route Handler
+### Step 2: Register Route Handler in Hono Router
 
-Create SvelteKit route for replace-image endpoint.
+Add the route to the artworks router.
 
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/replace-image/+server.ts`
+**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` (Update existing file)
 
-```typescript
-import { replaceImageHandler as POST } from '$lib/api/routes/artworks'
-
-export { POST }
-```
-
-### Step 4: Create R2 Deletion Worker (Optional)
-
-If not already implemented, create a worker to handle R2 file deletion.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/workers/delete-file.ts` (Optional)
+Add this line to the router setup (adjust based on existing router pattern):
 
 ```typescript
-/**
- * DELETE /delete-file
- * Cloudflare Worker to delete files from R2
- */
-
-interface DeleteRequest {
-  key: string
-  timestamp: string
-}
-
-export interface Env {
-  BUCKET: R2Bucket
-  WORKER_AUTH_TOKEN: string
-}
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization')
-    if (authHeader !== `Bearer ${env.WORKER_AUTH_TOKEN}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
-
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 })
-    }
-
-    try {
-      const body: DeleteRequest = await request.json()
-      const { key } = body
-
-      if (!key) {
-        return new Response(JSON.stringify({ error: 'Missing key' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-
-      // Delete from R2
-      await env.BUCKET.delete(key)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          key,
-          deleted: true
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
-    } catch (error) {
-      console.error('Error deleting file:', error)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: String(error)
-        }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
-    }
-  }
-}
+// In the artworks router configuration:
+router.post('/:id/replace-image', replaceImage)
 ```
 
 ---
@@ -539,18 +269,15 @@ export default {
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/imageReplacement.ts` | Create | Image replacement service |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add replace-image handler |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/replace-image/+server.ts` | Create | SvelteKit route |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/workers/delete-file.ts` | Create | R2 deletion worker (optional) |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add `replaceImage` handler and route registration |
 
 ---
 
 ## Verification
 
-### Test 1: Replace Image
+### Test 1: Replace Image Successfully
 ```bash
-# Step 1: Get presigned URL for new image
+# Step 1: Get presigned URL for new image upload
 curl -X POST http://localhost:5173/api/artworks/upload-url \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
@@ -559,9 +286,9 @@ curl -X POST http://localhost:5173/api/artworks/upload-url \
     "contentType": "image/jpeg"
   }'
 
-# Save returned key: originals/user-id/new-uuid.jpg
+# Response: { "uploadUrl": "...", "imageKey": "originals/{userId}/{uuid}.jpg" }
 
-# Step 2: Upload new image to R2
+# Step 2: Upload new image to R2 via presigned URL
 curl -X PUT "<uploadUrl>" \
   -H "Content-Type: image/jpeg" \
   --data-binary @new-artwork.jpg
@@ -571,129 +298,134 @@ curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
-    "originalKey": "originals/user-id/new-uuid.jpg"
-  }'
-
-# Expected: 200 OK with updated artwork
-# {
-#   "success": true,
-#   "data": {
-#     "id": "art_abc123",
-#     "originalUrl": "https://cdn.vfa.gallery/originals/user-id/new-uuid.jpg",
-#     "displayUrl": "https://cdn.vfa.gallery/display/user-id/new-uuid.jpg",
-#     "thumbnailUrl": "https://cdn.vfa.gallery/thumbnails/user-id/new-uuid.jpg",
-#     "iconUrl": "https://cdn.vfa.gallery/icons/user-id/new-uuid.jpg",
-#     ...
-#   },
-#   "replacement": {
-#     "oldImageUrls": { ... },
-#     "newImageUrls": { ... }
-#   }
-# }
-```
-
-### Test 2: Replace Image with Cleanup
-```bash
-curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{
-    "originalKey": "originals/user-id/new-uuid.jpg",
-    "deleteOldImages": true
+    "imageKey": "originals/{userId}/{newUuid}.jpg"
   }'
 
 # Expected: 200 OK
-# Verify old images are deleted from R2
+# {
+#   "id": "art_abc123",
+#   "image_key": "originals/{userId}/{newUuid}.jpg",
+#   "display_url": "https://cdn.vfa.gallery/cdn-cgi/image/quality=90,width=1200/originals/{userId}/{newUuid}.jpg",
+#   "thumbnail_url": "https://cdn.vfa.gallery/cdn-cgi/image/quality=80,width=300,height=300,fit=cover/originals/{userId}/{newUuid}.jpg",
+#   "icon_url": "https://cdn.vfa.gallery/cdn-cgi/image/quality=80,width=100,height=100,fit=cover/originals/{userId}/{newUuid}.jpg",
+#   "updated_at": "2026-02-14T10:30:00Z",
+#   ...
+# }
 ```
 
-### Test 3: Invalid Image Key
+### Test 2: Replace Image with Old Image Cleanup
 ```bash
 curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
-    "originalKey": "display/user-id/uuid.jpg"
+    "imageKey": "originals/{userId}/{newUuid}.jpg",
+    "oldImageKey": "originals/{userId}/{oldUuid}.jpg"
+  }'
+
+# Expected: 200 OK
+# Verify in R2: old image should be deleted, new image remains
+```
+
+### Test 3: Image Does Not Exist in R2
+```bash
+curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "imageKey": "originals/{userId}/nonexistent-uuid.jpg"
   }'
 
 # Expected: 400 Bad Request
-# "Invalid image key format. Expected: originals/userId/uuid.extension"
+# "Specified image does not exist in R2"
 ```
 
-### Test 4: Non-Owner Cannot Replace
+### Test 4: Invalid Image Key Format
+```bash
+curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "imageKey": "display/{userId}/uuid.jpg"
+  }'
+
+# Expected: 400 Bad Request
+# "Invalid imageKey format. Expected: originals/{userId}/{uuid}.extension"
+```
+
+### Test 5: Non-Owner Cannot Replace
 ```bash
 curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <other-user-token>" \
   -d '{
-    "originalKey": "originals/other-user-id/uuid.jpg"
+    "imageKey": "originals/{otherUserId}/{uuid}.jpg"
   }'
 
 # Expected: 403 Forbidden
+# "Not authorized to update this artwork"
 ```
 
-### Test 5: Metadata Unchanged
+### Test 6: Metadata Unchanged
 ```bash
 # Get artwork before replacement
-curl -X GET http://localhost:5173/api/artworks/art_abc123
+curl -X GET http://localhost:5173/api/artworks/art_abc123 \
+  -H "Authorization: Bearer <token>"
 
-# Save title, description, tags, etc.
+# Save: title, description, tags, category, created_at
 
 # Replace image
 curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
-    "originalKey": "originals/user-id/new-uuid.jpg"
+    "imageKey": "originals/{userId}/{newUuid}.jpg"
   }'
 
-# Get artwork after replacement
-curl -X GET http://localhost:5173/api/artworks/art_abc123
-
-# Verify: title, description, tags, category all unchanged
-# Only image URLs changed
-```
-
-### Test 6: Processing Pipeline Executed
-```bash
-# Monitor CloudFlare Worker logs during replace-image call
-# Verify all three workers execute:
-# - Watermark worker for display image
-# - Thumbnail worker
-# - Icon worker
-
-# All should complete within 10 seconds
-```
-
-### Test 7: Timestamps Updated
-```bash
-# Get artwork before replacement
-curl -X GET http://localhost:5173/api/artworks/art_abc123
-# Note: updatedAt timestamp
-
-# Replace image
-curl -X POST http://localhost:5173/api/artworks/art_abc123/replace-image \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"originalKey": "originals/user-id/new-uuid.jpg"}'
-
 # Get artwork after
-curl -X GET http://localhost:5173/api/artworks/art_abc123
-# Verify: updatedAt is newer
-# createdAt should be unchanged
+curl -X GET http://localhost:5173/api/artworks/art_abc123 \
+  -H "Authorization: Bearer <token>"
+
+# Verify: title, description, tags, category unchanged
+# Verify: created_at unchanged
+# Verify: updated_at is newer
+# Verify: image_key changed, all generated URLs reflect new key
+```
+
+### Test 7: Updated_at Timestamp Refreshed
+```bash
+# Before:
+# "updated_at": "2026-02-10T08:00:00Z"
+
+# After replace-image:
+# "updated_at": "2026-02-14T10:30:00Z" (current time)
+
+# created_at should remain unchanged
+```
+
+### Test 8: Generated URLs Correct
+```bash
+# Response image_key: "originals/{userId}/abc-123-def.jpg"
+# Generated URLs should use Cloudflare Image Transformations:
+# - display_url: https://cdn.vfa.gallery/cdn-cgi/image/quality=90,width=1200/originals/{userId}/abc-123-def.jpg
+# - thumbnail_url: https://cdn.vfa.gallery/cdn-cgi/image/quality=80,width=300,height=300,fit=cover/originals/{userId}/abc-123-def.jpg
+# - icon_url: https://cdn.vfa.gallery/cdn-cgi/image/quality=80,width=100,height=100,fit=cover/originals/{userId}/abc-123-def.jpg
+
+# Test in browser: All URLs should render correctly
 ```
 
 ---
 
 ## Notes
 
-- **Pipeline Integration**: Reuses existing image processing pipeline (Build 40)
-- **Optional Cleanup**: Old images can be kept (safer) or deleted immediately
-- **Atomic Operations**: Database update and R2 deletion are not transactional; cleanup failures don't block main operation
-- **URL Reconstruction**: Service converts CDN URLs back to R2 keys for deletion
-- **Key Validation**: Validates image key format before processing
-- **Worker Communication**: Calls workers via HTTP with token authentication
-- **Metadata Preservation**: Only image URLs updated; all metadata (title, tags, etc.) preserved
-- **Timestamps**: `updatedAt` refreshed but `createdAt` stays same
-- **Rate Limiting**: Subject to image processing worker rate limits
-- **Error Recovery**: If processing fails, old URLs remain unchanged
-
+- **No Variants**: Unlike previous implementations, we store only `image_key` in the database. Cloudflare Image Transformations generates all variants on-the-fly via query parameters.
+- **Single File Deletion**: When replacing an image, only one file (the original) is deleted from R2. There are no separate variant files to manage.
+- **URL Generation**: All image URLs are built dynamically in the endpoint response using the `image_key` and transformation parameters.
+- **Key Validation**: The imageKey must follow the pattern `originals/{userId}/{uuid}.extension` and userId must match the authenticated user.
+- **Atomic Database Update**: Database update is fast and atomic. R2 deletion is best-effort; failures don't block the main operation.
+- **Optional Cleanup**: The `oldImageKey` parameter is optional. If not provided, the old image remains in R2. Callers can choose to manage cleanup separately.
+- **Metadata Preservation**: Only `image_key` and `updated_at` are modified. All other fields (title, tags, category, etc.) remain unchanged.
+- **Timestamps**: `updated_at` is refreshed to the current ISO timestamp. `created_at` is never modified.
+- **Error Recovery**: If the new image doesn't exist in R2, the database is not modified and the old image_key remains active.
+- **CDN Cache Invalidation**: When image URLs change, CDN caches may need invalidation depending on cache headers. Consider adding cache control headers to the response or configuring Cloudflare rules.
+- **Auth via Middleware**: Uses the standard `requireAuth` middleware to get the authenticated user. The endpoint confirms the user owns the artwork before allowing replacement.

@@ -5,7 +5,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 1: Project Foundation (01-05)
+## ✅ Phase 1: Project Foundation (01-05)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -17,7 +17,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 2: Database Schema (06-14)
+## ✅ Phase 2: Database Schema (06-14)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -33,7 +33,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 3: API Foundation (15-17)
+## ✅ Phase 3: API Foundation (15-17)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -43,7 +43,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 4: Authentication (18-23)
+## ✅ Phase 4: Authentication (18-23)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -56,7 +56,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 5: React Foundation (24-29)
+## ✅ Phase 5: React Foundation (24-29)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -69,7 +69,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 6: User Profile (30-35)
+## ✅ Phase 6: User Profile (30-35)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -82,7 +82,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 7: Image Pipeline (36-40)
+## ✅ Phase 7: Image Pipeline (36-40)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -94,7 +94,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 8: Artwork CRUD (41-47)
+## ✅ Phase 8: Artwork CRUD (41-47)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -108,7 +108,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 9: Artwork UI (48-51)
+## ✅ Phase 9: Artwork UI (48-51)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -119,7 +119,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 10: Gallery CRUD (52-58)
+## ✅ Phase 10: Gallery CRUD (52-58)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -133,7 +133,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 11: Gallery UI (59-62)
+## ✅ Phase 11: Gallery UI (59-62)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -144,7 +144,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 12: Collection CRUD (63-70)
+## ✅ Phase 12: Collection CRUD (63-70)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -159,7 +159,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 13: Collection-Artwork Management (71-75)
+## ✅ Phase 13: Collection-Artwork Management (71-75)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -171,7 +171,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 14: Public Views - Artist (76-79)
+## ✅ Phase 14: Public Views - Artist (76-79)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -182,7 +182,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 15: Public Views - Gallery (80-83)
+## ✅ Phase 15: Public Views - Gallery (80-83)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -193,7 +193,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 16: Public Views - Collection (84-87)
+## ✅ Phase 16: Public Views - Collection (84-87)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -204,7 +204,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 17: Public Views - Artwork (88-92)
+## ✅ Phase 17: Public Views - Artwork (88-92)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -216,7 +216,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 18: Browse & Homepage (93-99)
+## ✅ Phase 18: Browse & Homepage (93-99)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -230,7 +230,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 19: Search (100-104)
+## ✅ Phase 19: Search (100-104)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -242,7 +242,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 20: Themes (105-112)
+## ✅ Phase 20: Themes (105-112)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -257,7 +257,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 21: Messaging (113-120)
+## ✅ Phase 21: Messaging (113-120)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -272,7 +272,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 22: Groups (121-128)
+## ✅ Phase 22: Groups (121-128)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -287,7 +287,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 23: Gallery Roles (129-132)
+## Phase 23: Gallery Roles (129-132) ✅
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -298,7 +298,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 24: Admin - Foundation (133-136)
+## Phase 24: Admin - Foundation (133-136) ✅
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -309,7 +309,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 25: Admin - Users (137-142)
+## Phase 25: Admin - Users (137-142) ✅
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -322,7 +322,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 26: Admin - Moderation (143-146)
+## Phase 26: Admin - Moderation (143-146) ✅
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -333,7 +333,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 27: Rate Limiting & Security (147-151)
+## ✅ Phase 27: Rate Limiting & Security (147-151)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -345,7 +345,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 28: Social Sharing (152-155)
+## ✅ Phase 28: Social Sharing (152-155)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -356,7 +356,7 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Phase 29: Ads (156-157)
+## ✅ Phase 29: Ads (156-157)
 
 | # | File | Deliverable |
 |---|------|-------------|
@@ -392,7 +392,18 @@ Each file is a self-contained unit with specs, prerequisites, steps, and verific
 
 ---
 
-## Total: 170 build files
+## Phase 32: E2E Testing — Playwright (171-174)
+
+| # | File | Deliverable |
+|---|------|-------------|
+| 171 | E2E-PLAYWRIGHT-SETUP.md | Playwright install, config, auth bypass, MCP server |
+| 172 | E2E-PUBLIC-BROWSING-FLOWS.md | Homepage, browse, search, artist, artwork tests |
+| 173 | E2E-ARTIST-MANAGEMENT-FLOWS.md | Profile, gallery, collection, artwork CRUD tests |
+| 174 | E2E-SOCIAL-MESSAGING-FLOWS.md | Share buttons, messaging, groups, mobile social tests |
+
+---
+
+## Total: 174 build files
 
 Estimated time per file: varies (5 min for simple schema, 30+ min for complex UI)
 

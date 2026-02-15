@@ -16,12 +16,11 @@ Protected fields (NOT editable):
 - `id` - Immutable primary key
 - `userId` - Ownership immutable
 - `status` - Use DELETE endpoint for deletion
-- Image URLs (`originalUrl`, `displayUrl`, `thumbnailUrl`, `iconUrl`) - Use replace-image endpoint
+- Image key (`imageKey`) - Use replace-image endpoint
 - Timestamps (`createdAt`) - Auto-managed
 
 Update timestamps:
 - `updatedAt` - Always set to current time on any update
-- `updatedBy` - Optional, can track which user made the change
 
 Request schema:
 ```json
@@ -36,7 +35,7 @@ Request schema:
 }
 ```
 
-Response: Updated artwork object with all fields
+Response: Updated artwork object with all fields and generated image URLs
 
 ---
 
@@ -50,328 +49,17 @@ Response: Updated artwork object with all fields
 
 ## Steps
 
-### Step 1: Create Artwork Update Service
+### Step 1: Add PATCH Endpoint to Artworks Router
 
-Build service module for update operations with validation and slug regeneration.
-
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/artworkUpdate.ts`
-
-```typescript
-import type { D1Database } from '@cloudflare/workers-types'
-
-/**
- * Update request payload
- */
-export interface ArtworkUpdateInput {
-  title?: string
-  description?: string
-  materials?: string
-  dimensions?: string
-  createdDate?: string
-  category?: string
-  tags?: string[]
-}
-
-/**
- * Artwork update service
- */
-export class ArtworkUpdateService {
-  private db: D1Database
-
-  constructor(db: D1Database) {
-    this.db = db
-  }
-
-  /**
-   * Update artwork metadata
-   *
-   * @param artworkId - The artwork ID to update
-   * @param userId - The user ID (must own the artwork)
-   * @param updates - Fields to update
-   * @returns Updated artwork object
-   * @throws Error if artwork not found, not owned, or validation fails
-   */
-  async updateArtwork(
-    artworkId: string,
-    userId: string,
-    updates: ArtworkUpdateInput
-  ): Promise<any> {
-    try {
-      // Fetch current artwork to verify ownership
-      const artwork = await this.db
-        .prepare('SELECT * FROM artworks WHERE id = ? AND user_id = ?')
-        .bind(artworkId, userId)
-        .first()
-
-      if (!artwork) {
-        throw new Error('Artwork not found or not owned by user')
-      }
-
-      // Validate input
-      this.validateInput(updates)
-
-      // Prepare update object
-      const updateData: any = {}
-      const updateFields: string[] = []
-
-      // Handle title change - regenerate slug
-      if (updates.title !== undefined && updates.title !== artwork.title) {
-        const newSlug = await this.generateUniqueSlug(updates.title, userId, artworkId)
-        updateData.slug = newSlug
-        updateFields.push('slug')
-      }
-
-      // Add other updatable fields
-      if (updates.description !== undefined) {
-        updateData.description = updates.description
-        updateFields.push('description')
-      }
-
-      if (updates.materials !== undefined) {
-        updateData.materials = updates.materials
-        updateFields.push('materials')
-      }
-
-      if (updates.dimensions !== undefined) {
-        updateData.dimensions = updates.dimensions
-        updateFields.push('dimensions')
-      }
-
-      if (updates.createdDate !== undefined) {
-        updateData.created_date = updates.createdDate
-        updateFields.push('created_date')
-      }
-
-      if (updates.category !== undefined) {
-        updateData.category = updates.category
-        updateFields.push('category')
-      }
-
-      if (updates.tags !== undefined) {
-        updateData.tags = updates.tags.length > 0 ? JSON.stringify(updates.tags) : null
-        updateFields.push('tags')
-      }
-
-      // Always update timestamp
-      updateData.updated_at = new Date().toISOString()
-      updateFields.push('updated_at')
-
-      if (updateFields.length === 1) {
-        // Only updated_at changed, return current artwork
-        return this.formatArtwork(artwork)
-      }
-
-      // Build UPDATE query
-      const setClause = updateFields.map(f => `${f} = ?`).join(', ')
-      const values = updateFields.map(f => updateData[f])
-      values.push(artworkId, userId)
-
-      const query = `
-        UPDATE artworks
-        SET ${setClause}
-        WHERE id = ? AND user_id = ?
-      `
-
-      await this.db.prepare(query).bind(...values).run()
-
-      // Fetch and return updated artwork
-      const updated = await this.db
-        .prepare('SELECT * FROM artworks WHERE id = ? AND user_id = ?')
-        .bind(artworkId, userId)
-        .first()
-
-      return this.formatArtwork(updated)
-    } catch (error) {
-      console.error('Error updating artwork:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Validate update input
-   */
-  private validateInput(updates: ArtworkUpdateInput): void {
-    // Title validation
-    if (updates.title !== undefined) {
-      if (typeof updates.title !== 'string') {
-        throw new Error('Title must be a string')
-      }
-      if (updates.title.trim().length === 0) {
-        throw new Error('Title cannot be empty')
-      }
-      if (updates.title.length > 500) {
-        throw new Error('Title must be 500 characters or less')
-      }
-    }
-
-    // Description validation
-    if (updates.description !== undefined) {
-      if (updates.description !== null && typeof updates.description !== 'string') {
-        throw new Error('Description must be a string or null')
-      }
-      if (updates.description && updates.description.length > 5000) {
-        throw new Error('Description must be 5000 characters or less')
-      }
-    }
-
-    // Materials validation
-    if (updates.materials !== undefined) {
-      if (updates.materials !== null && typeof updates.materials !== 'string') {
-        throw new Error('Materials must be a string or null')
-      }
-      if (updates.materials && updates.materials.length > 500) {
-        throw new Error('Materials must be 500 characters or less')
-      }
-    }
-
-    // Dimensions validation
-    if (updates.dimensions !== undefined) {
-      if (updates.dimensions !== null && typeof updates.dimensions !== 'string') {
-        throw new Error('Dimensions must be a string or null')
-      }
-      if (updates.dimensions && updates.dimensions.length > 200) {
-        throw new Error('Dimensions must be 200 characters or less')
-      }
-    }
-
-    // Created date validation
-    if (updates.createdDate !== undefined) {
-      if (updates.createdDate !== null && typeof updates.createdDate !== 'string') {
-        throw new Error('createdDate must be a string or null')
-      }
-      // Validate date format if provided (YYYY-MM or YYYY-MM-DD)
-      if (updates.createdDate && !this.isValidDateString(updates.createdDate)) {
-        throw new Error('createdDate must be in format YYYY-MM or YYYY-MM-DD')
-      }
-    }
-
-    // Category validation
-    if (updates.category !== undefined) {
-      const validCategories = ['manga', 'comic', 'illustration', 'concept-art', 'fan-art', 'other']
-      if (!validCategories.includes(updates.category)) {
-        throw new Error(`Category must be one of: ${validCategories.join(', ')}`)
-      }
-    }
-
-    // Tags validation
-    if (updates.tags !== undefined) {
-      if (!Array.isArray(updates.tags)) {
-        throw new Error('Tags must be an array')
-      }
-      if (updates.tags.length > 20) {
-        throw new Error('Maximum 20 tags allowed')
-      }
-      for (const tag of updates.tags) {
-        if (typeof tag !== 'string' || tag.trim().length === 0) {
-          throw new Error('Each tag must be a non-empty string')
-        }
-        if (tag.length > 50) {
-          throw new Error('Each tag must be 50 characters or less')
-        }
-      }
-    }
-  }
-
-  /**
-   * Generate unique slug for title within user's artworks
-   */
-  private async generateUniqueSlug(
-    title: string,
-    userId: string,
-    excludeArtworkId?: string
-  ): Promise<string> {
-    const baseSlug = this.generateSlug(title)
-    let slug = baseSlug
-    let counter = 1
-
-    while (true) {
-      const query = excludeArtworkId
-        ? 'SELECT id FROM artworks WHERE user_id = ? AND slug = ? AND id != ? LIMIT 1'
-        : 'SELECT id FROM artworks WHERE user_id = ? AND slug = ? LIMIT 1'
-
-      const params = excludeArtworkId ? [userId, slug, excludeArtworkId] : [userId, slug]
-
-      const existing = await this.db.prepare(query).bind(...params).first()
-
-      if (!existing) {
-        return slug
-      }
-
-      slug = `${baseSlug}-${counter}`
-      counter++
-
-      if (counter > 1000) {
-        throw new Error('Unable to generate unique slug')
-      }
-    }
-  }
-
-  /**
-   * Generate slug from title
-   */
-  private generateSlug(title: string): string {
-    return title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .substring(0, 50)
-  }
-
-  /**
-   * Validate date string format
-   */
-  private isValidDateString(dateStr: string): boolean {
-    // Allow YYYY-MM or YYYY-MM-DD format
-    const pattern = /^\d{4}-\d{2}(-\d{2})?$/
-    return pattern.test(dateStr)
-  }
-
-  /**
-   * Format artwork database record
-   */
-  private formatArtwork(artwork: any): any {
-    return {
-      id: artwork.id,
-      userId: artwork.user_id,
-      slug: artwork.slug,
-      title: artwork.title,
-      description: artwork.description,
-      materials: artwork.materials,
-      dimensions: artwork.dimensions,
-      createdDate: artwork.created_date,
-      category: artwork.category,
-      tags: artwork.tags ? JSON.parse(artwork.tags) : [],
-      originalUrl: artwork.original_url,
-      displayUrl: artwork.display_url,
-      thumbnailUrl: artwork.thumbnail_url,
-      iconUrl: artwork.icon_url,
-      status: artwork.status,
-      isFeatured: artwork.is_featured,
-      createdAt: artwork.created_at,
-      updatedAt: artwork.updated_at
-    }
-  }
-}
-```
-
-### Step 2: Add PATCH Endpoint to Artworks Route
-
-Create the PATCH handler for artwork updates.
+Add the PATCH handler to the existing artworks router. The router uses dynamic SET clause building (only updating provided fields) and generates image URLs at response time.
 
 **File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` (Update existing file)
 
-Add this handler:
+Add this handler to the router:
 
 ```typescript
-import { json, type RequestHandler } from '@sveltejs/kit'
-import { auth } from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import { ArtworkUpdateService, type ArtworkUpdateInput } from '$lib/api/services/artworkUpdate'
-
 /**
- * PATCH /api/artworks/:id
+ * PATCH /:id
  * Update artwork metadata
  *
  * Allowed fields:
@@ -384,7 +72,7 @@ import { ArtworkUpdateService, type ArtworkUpdateInput } from '$lib/api/services
  * - tags
  *
  * Protected fields (cannot be updated):
- * - id, userId, status, originalUrl, displayUrl, thumbnailUrl, iconUrl
+ * - id, userId, imageKey, status, timestamps
  *
  * Response codes:
  * - 200: Artwork updated successfully
@@ -394,96 +82,321 @@ import { ArtworkUpdateService, type ArtworkUpdateInput } from '$lib/api/services
  * - 404: Artwork not found
  * - 500: Server error
  */
-export const PATCH: RequestHandler = async ({ url, request }) => {
+artworks.patch('/:id', requireAuth, async (c) => {
   try {
-    // Authenticate user
-    const session = await auth.getSession(request)
-    if (!session?.user?.id) {
-      return json({ error: 'Unauthorized' }, { status: 401 })
+    const authUser = getCurrentUser(c)
+    if (!authUser) {
+      throw Errors.unauthorized()
     }
 
-    const userId = session.user.id
-
-    // Extract artwork ID from URL
-    const pathParts = url.pathname.split('/')
-    const artworkId = pathParts[pathParts.length - 1]
-
+    const artworkId = c.req.param('id')
     if (!artworkId) {
-      return json({ error: 'Missing artwork ID' }, { status: 400 })
+      throw Errors.badRequest('Missing artwork ID')
     }
 
-    // Parse request body
-    const body = await request.json().catch(() => ({}))
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      throw Errors.badRequest('Invalid JSON body')
+    }
+
+    const db = c.env.DB
+    const data = body as Record<string, unknown>
 
     // Check for protected fields
     const protectedFields = [
       'id',
       'userId',
       'user_id',
+      'imageKey',
+      'image_key',
       'status',
-      'originalUrl',
-      'original_url',
-      'displayUrl',
-      'display_url',
-      'thumbnailUrl',
-      'thumbnail_url',
-      'iconUrl',
-      'icon_url',
+      'isFeatured',
+      'is_featured',
       'createdAt',
       'created_at',
-      'isFeatured',
-      'is_featured'
+      'updatedAt',
+      'updated_at',
+      'slug', // Slug is regenerated from title, not directly editable
     ]
 
-    const providedFields = Object.keys(body)
+    const providedFields = Object.keys(data)
     const protectedFieldsProvided = providedFields.filter(f => protectedFields.includes(f))
 
     if (protectedFieldsProvided.length > 0) {
-      return json(
-        {
-          error: `Cannot update protected fields: ${protectedFieldsProvided.join(', ')}`
-        },
-        { status: 400 }
-      )
+      throw Errors.badRequest(`Cannot update protected fields: ${protectedFieldsProvided.join(', ')}`)
     }
 
-    // Initialize update service
-    const updateService = new ArtworkUpdateService(db)
+    // Fetch current artwork to verify ownership
+    const artwork = await db
+      .prepare('SELECT * FROM artworks WHERE id = ? AND user_id = ?')
+      .bind(artworkId, authUser.userId)
+      .first<any>()
 
-    // Perform update
-    const updated = await updateService.updateArtwork(artworkId, userId, body as ArtworkUpdateInput)
+    if (!artwork) {
+      throw Errors.notFound('Artwork')
+    }
 
-    return json({ data: updated }, { status: 200 })
+    // Validate input
+    validateArtworkUpdate(data)
+
+    // Build dynamic SET clause - only update provided fields
+    const setClauses: string[] = ['updated_at = CURRENT_TIMESTAMP']
+    const bindings: unknown[] = []
+
+    // Handle title change - regenerate slug
+    if (data.title !== undefined && data.title !== artwork.title) {
+      const newSlug = await generateUniqueSlug(db, data.title as string, authUser.userId, artworkId)
+      setClauses.push('slug = ?')
+      bindings.push(newSlug)
+    }
+
+    // Add other updatable fields
+    if (data.description !== undefined) {
+      setClauses.push('description = ?')
+      bindings.push(data.description)
+    }
+
+    if (data.materials !== undefined) {
+      setClauses.push('materials = ?')
+      bindings.push(data.materials)
+    }
+
+    if (data.dimensions !== undefined) {
+      setClauses.push('dimensions = ?')
+      bindings.push(data.dimensions)
+    }
+
+    if (data.createdDate !== undefined) {
+      setClauses.push('created_date = ?')
+      bindings.push(data.createdDate)
+    }
+
+    if (data.category !== undefined) {
+      setClauses.push('category = ?')
+      bindings.push(data.category)
+    }
+
+    if (data.tags !== undefined) {
+      const tagsJson = Array.isArray(data.tags) && data.tags.length > 0 ? JSON.stringify(data.tags) : null
+      setClauses.push('tags = ?')
+      bindings.push(tagsJson)
+    }
+
+    // If only updated_at was set, no actual changes - just return current artwork
+    if (setClauses.length === 1) {
+      const formatted = formatArtwork(artwork)
+      return c.json(formatted, 200)
+    }
+
+    // Execute update
+    bindings.push(artworkId, authUser.userId)
+    const query = `UPDATE artworks SET ${setClauses.join(', ')} WHERE id = ? AND user_id = ?`
+
+    await db.prepare(query).bind(...bindings).run()
+
+    // Fetch and return updated artwork
+    const updated = await db
+      .prepare('SELECT * FROM artworks WHERE id = ? AND user_id = ?')
+      .bind(artworkId, authUser.userId)
+      .first<any>()
+
+    if (!updated) {
+      throw Errors.internal('Failed to retrieve updated artwork')
+    }
+
+    const formatted = formatArtwork(updated)
+    return c.json(formatted, 200)
   } catch (error) {
-    console.error('Error in PATCH /api/artworks/:id:', error)
-
     if (error instanceof Error) {
-      if (error.message.includes('not found')) {
-        return json({ error: 'Artwork not found' }, { status: 404 })
+      if (error.message.includes('not found') || error.message.includes('Artwork')) {
+        throw Errors.notFound('Artwork')
       }
-      if (error.message.includes('not owned')) {
-        return json({ error: 'Not authorized to update this artwork' }, { status: 403 })
+      if (error.message.includes('not owned') || error.message.includes('don\'t own')) {
+        throw Errors.forbidden()
       }
-      if (error.message.includes('must be')) {
-        return json({ error: error.message }, { status: 400 })
+      // Validation errors
+      if (
+        error.message.includes('must be') ||
+        error.message.includes('cannot be') ||
+        error.message.includes('must have') ||
+        error.message.includes('format')
+      ) {
+        throw Errors.badRequest(error.message)
       }
     }
+    throw error
+  }
+})
 
-    return json({ error: 'Internal server error' }, { status: 500 })
+/**
+ * Generate unique slug for title within user's artworks
+ */
+async function generateUniqueSlug(
+  db: D1Database,
+  title: string,
+  userId: string,
+  excludeArtworkId?: string
+): Promise<string> {
+  const baseSlug = generateSlug(title)
+  let slug = baseSlug
+  let counter = 1
+
+  while (true) {
+    const query = excludeArtworkId
+      ? 'SELECT id FROM artworks WHERE user_id = ? AND slug = ? AND id != ? LIMIT 1'
+      : 'SELECT id FROM artworks WHERE user_id = ? AND slug = ? LIMIT 1'
+
+    const params = excludeArtworkId ? [userId, slug, excludeArtworkId] : [userId, slug]
+
+    const existing = await db.prepare(query).bind(...params).first()
+
+    if (!existing) {
+      return slug
+    }
+
+    slug = `${baseSlug}-${counter}`
+    counter++
+
+    if (counter > 1000) {
+      throw new Error('Unable to generate unique slug')
+    }
+  }
+}
+
+/**
+ * Format artwork database record with generated image URLs
+ */
+function formatArtwork(artwork: any): any {
+  const imageKey = artwork.image_key
+  return {
+    id: artwork.id,
+    userId: artwork.user_id,
+    slug: artwork.slug,
+    title: artwork.title,
+    description: artwork.description,
+    materials: artwork.materials,
+    dimensions: artwork.dimensions,
+    createdDate: artwork.created_date,
+    category: artwork.category,
+    tags: artwork.tags ? JSON.parse(artwork.tags) : [],
+    imageKey,
+    thumbnailUrl: getThumbnailUrl(imageKey),
+    iconUrl: getIconUrl(imageKey),
+    displayUrl: getDisplayUrl(imageKey),
+    status: artwork.status,
+    isFeatured: artwork.is_featured,
+    createdAt: artwork.created_at,
+    updatedAt: artwork.updated_at,
   }
 }
 ```
 
-### Step 3: Update SvelteKit Route Handler
+### Step 2: Add Artwork Update Validation
 
-Wire up the PATCH handler in SvelteKit routing.
+Add validation function for artwork updates.
 
-**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/+server.ts` (Update)
+**File:** `/Volumes/DataSSD/gitsrc/vfa_gallery/src/validation/artworks.ts` (Update existing file)
+
+Add this validation function:
 
 ```typescript
-import { GET, PATCH } from '$lib/api/routes/artworks'
+/**
+ * Validate artwork update input
+ */
+export function validateArtworkUpdate(data: Record<string, unknown>): void {
+  // Title validation
+  if (data.title !== undefined) {
+    if (typeof data.title !== 'string') {
+      throw new Error('Title must be a string')
+    }
+    if (data.title.trim().length === 0) {
+      throw new Error('Title cannot be empty')
+    }
+    if (data.title.length > 500) {
+      throw new Error('Title must be 500 characters or less')
+    }
+  }
 
-export { GET, PATCH }
+  // Description validation
+  if (data.description !== undefined) {
+    if (data.description !== null && typeof data.description !== 'string') {
+      throw new Error('Description must be a string or null')
+    }
+    if (data.description && typeof data.description === 'string' && data.description.length > 5000) {
+      throw new Error('Description must be 5000 characters or less')
+    }
+  }
+
+  // Materials validation
+  if (data.materials !== undefined) {
+    if (data.materials !== null && typeof data.materials !== 'string') {
+      throw new Error('Materials must be a string or null')
+    }
+    if (data.materials && typeof data.materials === 'string' && data.materials.length > 500) {
+      throw new Error('Materials must be 500 characters or less')
+    }
+  }
+
+  // Dimensions validation
+  if (data.dimensions !== undefined) {
+    if (data.dimensions !== null && typeof data.dimensions !== 'string') {
+      throw new Error('Dimensions must be a string or null')
+    }
+    if (data.dimensions && typeof data.dimensions === 'string' && data.dimensions.length > 200) {
+      throw new Error('Dimensions must be 200 characters or less')
+    }
+  }
+
+  // Created date validation
+  if (data.createdDate !== undefined) {
+    if (data.createdDate !== null && typeof data.createdDate !== 'string') {
+      throw new Error('createdDate must be a string or null')
+    }
+    // Validate date format if provided (YYYY-MM or YYYY-MM-DD)
+    if (data.createdDate && typeof data.createdDate === 'string') {
+      if (!isValidDateString(data.createdDate)) {
+        throw new Error('createdDate must be in format YYYY-MM or YYYY-MM-DD')
+      }
+    }
+  }
+
+  // Category validation
+  if (data.category !== undefined) {
+    const validCategories = ['manga', 'comic', 'illustration', 'concept-art', 'fan-art', 'other']
+    if (!validCategories.includes(data.category as string)) {
+      throw new Error(`Category must be one of: ${validCategories.join(', ')}`)
+    }
+  }
+
+  // Tags validation
+  if (data.tags !== undefined) {
+    if (!Array.isArray(data.tags)) {
+      throw new Error('Tags must be an array')
+    }
+    if (data.tags.length > 20) {
+      throw new Error('Maximum 20 tags allowed')
+    }
+    for (const tag of data.tags) {
+      if (typeof tag !== 'string' || tag.trim().length === 0) {
+        throw new Error('Each tag must be a non-empty string')
+      }
+      if (tag.length > 50) {
+        throw new Error('Each tag must be 50 characters or less')
+      }
+    }
+  }
+}
+
+/**
+ * Validate date string format
+ */
+function isValidDateString(dateStr: string): boolean {
+  // Allow YYYY-MM or YYYY-MM-DD format
+  const pattern = /^\d{4}-\d{2}(-\d{2})?$/
+  return pattern.test(dateStr)
+}
 ```
 
 ---
@@ -492,9 +405,8 @@ export { GET, PATCH }
 
 | Path | Type | Purpose |
 |------|------|---------|
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/services/artworkUpdate.ts` | Create | Artwork update service with validation |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add PATCH handler |
-| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/routes/api/artworks/[id]/+server.ts` | Modify | Export PATCH handler |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/lib/api/routes/artworks.ts` | Modify | Add PATCH /:id handler |
+| `/Volumes/DataSSD/gitsrc/vfa_gallery/src/validation/artworks.ts` | Modify | Add validateArtworkUpdate function |
 
 ---
 
@@ -502,7 +414,7 @@ export { GET, PATCH }
 
 ### Test 1: Update Title (Triggers Slug Regeneration)
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -511,26 +423,24 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 # Expected: 200 OK
 # {
-#   "data": {
-#     "id": "art_abc123",
-#     "slug": "new-title-for-artwork",
-#     "title": "New Title For Artwork",
-#     "updatedAt": "2024-01-15T11:00:00Z",
-#     ...
-#   }
+#   "id": "art_abc123",
+#   "slug": "new-title-for-artwork",
+#   "title": "New Title For Artwork",
+#   "updatedAt": "2024-01-15T11:00:00Z",
+#   ...
 # }
 ```
 
 ### Test 2: Update Multiple Fields
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
     "description": "Updated description",
     "materials": "Oil on canvas",
     "dimensions": "100x150cm",
-    "category": "painting"
+    "category": "illustration"
   }'
 
 # Expected: 200 OK with all fields updated
@@ -538,7 +448,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 3: Update Tags
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -555,7 +465,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 # Update first artwork title to "Dragon Art Updated"
 # Then update back to "Dragon Art" - should reclaim "dragon-art"
 
-curl -X PATCH http://localhost:5173/api/artworks/art_first \
+curl -X PATCH http://localhost:8787/api/artworks/art_first \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -567,7 +477,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_first \
 
 ### Test 5: Invalid Category
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -579,7 +489,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 6: Protected Field Attempt
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -593,7 +503,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 7: Non-Owner Attempt
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <other-user-token>" \
   -d '{
@@ -601,12 +511,11 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
   }'
 
 # Expected: 403 Forbidden
-# "Not authorized to update this artwork"
 ```
 
 ### Test 8: Unauthenticated Request
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -d '{
     "title": "New Title"
@@ -617,7 +526,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 9: Title Length Validation
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -630,7 +539,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 10: Empty Title
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -644,7 +553,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 ### Test 11: Date Format Validation
 ```bash
 # Valid format
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -654,7 +563,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 # Expected: 200 OK
 
 # Invalid format
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{
@@ -666,7 +575,7 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 
 ### Test 12: Empty Update
 ```bash
-curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <owner-token>" \
   -d '{}'
@@ -674,17 +583,39 @@ curl -X PATCH http://localhost:5173/api/artworks/art_abc123 \
 # Expected: 200 OK with current artwork (updatedAt refreshed)
 ```
 
+### Test 13: Image URLs are Generated
+```bash
+curl -X PATCH http://localhost:8787/api/artworks/art_abc123 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <owner-token>" \
+  -d '{
+    "title": "Updated Title"
+  }'
+
+# Expected: 200 OK with response containing:
+# {
+#   "imageKey": "originals/user123/abc-def-ghi.jpg",
+#   "thumbnailUrl": "https://images.vfa.gallery/...",
+#   "iconUrl": "https://images.vfa.gallery/...",
+#   "displayUrl": "https://images.vfa.gallery/...",
+#   ...
+# }
+```
+
 ---
 
 ## Notes
 
 - **Slug Regeneration**: Slugs are automatically regenerated when title changes, excluding the current artwork from uniqueness check
-- **Timestamp Always Updated**: `updatedAt` is always refreshed, even if only empty or no-op updates
+- **Timestamp Always Updated**: `updatedAt` is always refreshed via `CURRENT_TIMESTAMP`, even if only no-op updates
 - **No Status Changes**: Use DELETE endpoint for deletion (sets status to 'deleted')
-- **Image URL Protection**: Image URLs cannot be updated directly; use replace-image endpoint instead
+- **Image URL Protection**: Image keys cannot be updated directly; use replace-image endpoint instead
 - **Partial Updates**: PATCH allows partial updates - only provided fields are updated
+- **Dynamic SQL**: Uses dynamic SET clause building pattern (see `src/lib/db/users.ts` for reference)
 - **Category Enum**: Hard-coded categories from spec: manga, comic, illustration, concept-art, fan-art, other
 - **Tags Array**: Stored as JSON in database, validated as array in API
+- **Image URLs Generated**: URLs are generated at response time from image_key using utility functions
 - **Database Indexes**: Ensure (user_id, slug) is indexed for slug uniqueness checks
-- **Audit Trail**: Consider adding `updatedBy` field to track who made the change
-
+- **Error Handling**: Uses `Errors` factory for consistent HTTP responses
+- **Auth**: Uses `requireAuth` middleware and `getCurrentUser(c)` to get current user
+- **Type Safety**: Uses `HonoEnv` type for proper typing of Hono context

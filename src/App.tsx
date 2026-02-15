@@ -1,31 +1,22 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
-import { Header } from './components/Header';
-import { Footer } from './components/Footer';
-import { Home } from './pages/Home';
-import { Docs } from './pages/Docs';
-import { EduDocs } from './pages/EduDocs';
-import { About } from './pages/About';
+import { RouterProvider } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
+import { router } from './router'
+import { AuthProvider } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
+import { ToastContainer } from './components/ui/ToastContainer'
+import ErrorBoundary from './components/ErrorBoundary'
 
-function App() {
+export default function App() {
   return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/docs" element={<Docs />} />
-              <Route path="/edu" element={<EduDocs />} />
-              <Route path="/about" element={<About />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </BrowserRouter>
-    </HelmetProvider>
-  );
+    <ErrorBoundary>
+      <HelmetProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+            <ToastContainer />
+          </ToastProvider>
+        </AuthProvider>
+      </HelmetProvider>
+    </ErrorBoundary>
+  )
 }
-
-export default App;

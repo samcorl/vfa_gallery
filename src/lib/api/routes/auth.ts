@@ -304,4 +304,107 @@ function generateUniqueUsername(email: string): string {
   return `${cleaned}_${suffix}`
 }
 
+/**
+ * POST /api/auth/test-login
+ * Test-only endpoint for E2E testing — bypasses Google OAuth
+ * Returns 404 in production
+ */
+auth.post('/test-login', async (c) => {
+  // Block in production
+  if (c.env.ENVIRONMENT === 'production') {
+    return c.json({ error: 'Not found' }, 404)
+  }
+
+  const body = await c.req.json<{ email: string; role?: string }>()
+  const { email, role } = body
+
+  if (!email) {
+    return c.json({ error: 'Email required' }, 400)
+  }
+
+  const db = c.env.DB
+
+  // Find existing user
+  const existingUser = await db
+    .prepare('SELECT id, email, username, display_name, avatar_url, status, role FROM users WHERE email = ?')
+    .bind(email)
+    .first<{
+      id: string
+      email: string
+      username: string
+      display_name: string | null
+      avatar_url: string | null
+      status: string
+      role: string
+    }>()
+
+  let userId: string
+  let userRole: string
+
+  if (existingUser) {
+    userId = existingUser.id
+    userRole = role || existingUser.role
+
+    // Update last login
+    await db
+      .prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(userId)
+      .run()
+  } else {
+    // Create test user
+    userId = generateUserId()
+    const username = generateUniqueUsername(email)
+    userRole = role || 'user'
+
+    const defaultGalleryId = crypto.randomUUID()
+    const defaultCollectionId = crypto.randomUUID()
+
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO users (id, email, username, display_name, avatar_url, status, role, last_login_at)
+           VALUES (?, ?, ?, ?, NULL, 'active', ?, CURRENT_TIMESTAMP)`
+        )
+        .bind(userId, email, username, `Test ${username}`, userRole),
+      db
+        .prepare(
+          `INSERT INTO galleries (id, user_id, slug, name, is_default, status)
+           VALUES (?, ?, 'my-gallery', 'My Gallery', 1, 'active')`
+        )
+        .bind(defaultGalleryId, userId),
+      db
+        .prepare(
+          `INSERT INTO collections (id, gallery_id, slug, name, is_default, status)
+           VALUES (?, ?, 'my-collection', 'My Collection', 1, 'active')`
+        )
+        .bind(defaultCollectionId, defaultGalleryId),
+    ])
+  }
+
+  // Generate JWT (same as real auth callback)
+  const jwtSecret = c.env.JWT_SECRET
+  if (!jwtSecret) {
+    return c.json({ error: 'JWT_SECRET not configured' }, 500)
+  }
+
+  const token = await generateAccessToken(
+    { userId, email, role: userRole },
+    jwtSecret
+  )
+
+  // Set auth cookie (same as real auth callback)
+  setAuthCookie(c, token)
+
+  // Log activity
+  await logActivity(db, c, {
+    action: 'user_login',
+    userId,
+    entityType: 'user',
+    entityId: userId,
+    metadata: { method: 'test-login' },
+  })
+
+  return c.json({ success: true, userId, email, role: userRole })
+})
+
 export { auth }

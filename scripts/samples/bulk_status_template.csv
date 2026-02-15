@@ -1,0 +1,3 @@
+user_id,new_status,reason
+abc-123-def,suspended,"Spam activity detected"
+xyz-789-ghi,active,"Appeal approved"

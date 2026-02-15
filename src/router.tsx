@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import type { RouteObject } from 'react-router-dom'
 
@@ -8,92 +9,140 @@ import AppShell from './components/layout/AppShell'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 
-// Public pages
-import HomePage from './pages/HomePage'
-import BrowsePage from './pages/BrowsePage'
-import SearchPage from './pages/SearchPage'
-import GroupPage from './pages/GroupPage'
-import ArtistProfilePage from './pages/ArtistProfilePage'
-import GalleryPage from './pages/GalleryPage'
-import CollectionPage from './pages/CollectionPage'
-import ArtworkPage from './pages/ArtworkPage'
-import NotFoundPage from './pages/NotFoundPage'
+// Error boundary
+import { ChunkErrorBoundary } from './components/ChunkErrorBoundary'
 
-// Landing pages (existing)
-import { Docs } from './pages/Docs'
-import { EduDocs } from './pages/EduDocs'
-import { About } from './pages/About'
+// Skeleton fallbacks
+import {
+  GridPageSkeleton,
+  DetailPageSkeleton,
+  ProfilePageSkeleton,
+  FormPageSkeleton,
+  AdminPageSkeleton,
+} from './components/ui/SkeletonPage'
 
-// Protected pages
-import ProfilePage from './pages/ProfilePage'
-import ProfileEditPage from './pages/ProfileEditPage'
-import GalleriesPage from './pages/GalleriesPage'
-import ArtworksPage from './pages/ArtworksPage'
-import ArtworkUploadPage from './pages/ArtworkUploadPage'
-import ArtworkEditPage from './pages/ArtworkEditPage'
-import GalleryCreatePage from './pages/GalleryCreatePage'
-import GalleryManagerPage from './pages/GalleryManagerPage'
-import GalleryEditPage from './pages/GalleryEditPage'
-import CollectionManagerPage from './pages/CollectionManagerPage'
-import MessagesPage from './pages/MessagesPage'
-import MessageComposePage from './pages/MessageComposePage'
-import MessageThreadPage from './pages/MessageThreadPage'
-import GroupManagePage from './pages/GroupManagePage'
+// Public pages (lazy loaded)
+const HomePage = lazy(() => import('./pages/HomePage'))
+const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+const SearchPage = lazy(() => import('./pages/SearchPage'))
+const GroupPage = lazy(() => import('./pages/GroupPage'))
+const ArtistProfilePage = lazy(() => import('./pages/ArtistProfilePage'))
+const GalleryPage = lazy(() => import('./pages/GalleryPage'))
+const CollectionPage = lazy(() => import('./pages/CollectionPage'))
+const ArtworkPage = lazy(() => import('./pages/ArtworkPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
-// Admin pages
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminUsers from './pages/admin/AdminUsers'
-import AdminReports from './pages/admin/AdminReports'
-import AdminModeration from './pages/admin/AdminModeration'
+// Landing pages (lazy loaded with named export handling)
+const Docs = lazy(() => import('./pages/Docs').then(m => ({ default: m.Docs })))
+const EduDocs = lazy(() => import('./pages/EduDocs').then(m => ({ default: m.EduDocs })))
+const About = lazy(() => import('./pages/About').then(m => ({ default: m.About })))
+
+// Protected pages (lazy loaded)
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'))
+const GalleriesPage = lazy(() => import('./pages/GalleriesPage'))
+const ArtworksPage = lazy(() => import('./pages/ArtworksPage'))
+const ArtworkUploadPage = lazy(() => import('./pages/ArtworkUploadPage'))
+const ArtworkEditPage = lazy(() => import('./pages/ArtworkEditPage'))
+const GalleryCreatePage = lazy(() => import('./pages/GalleryCreatePage'))
+const GalleryManagerPage = lazy(() => import('./pages/GalleryManagerPage'))
+const GalleryEditPage = lazy(() => import('./pages/GalleryEditPage'))
+const CollectionManagerPage = lazy(() => import('./pages/CollectionManagerPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
+const MessageComposePage = lazy(() => import('./pages/MessageComposePage'))
+const MessageThreadPage = lazy(() => import('./pages/MessageThreadPage'))
+const GroupManagePage = lazy(() => import('./pages/GroupManagePage'))
+
+// Admin pages (lazy loaded)
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
+const AdminModeration = lazy(() => import('./pages/admin/AdminModeration'))
 
 const routes: RouteObject[] = [
   {
-    element: <AppShell />,
+    element: (
+      <ChunkErrorBoundary>
+        <AppShell />
+      </ChunkErrorBoundary>
+    ),
     children: [
       // Public routes
       {
         path: '/',
-        element: <HomePage />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <HomePage />
+          </Suspense>
+        ),
       },
       {
         path: '/browse',
-        element: <BrowsePage />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <BrowsePage />
+          </Suspense>
+        ),
       },
       {
         path: '/search',
-        element: <SearchPage />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <SearchPage />
+          </Suspense>
+        ),
       },
       {
         path: '/groups/:slug/manage',
         element: (
           <ProtectedRoute>
-            <GroupManagePage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <GroupManagePage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
       {
         path: '/groups/:slug',
-        element: <GroupPage />,
+        element: (
+          <Suspense fallback={<DetailPageSkeleton />}>
+            <GroupPage />
+          </Suspense>
+        ),
       },
       // Landing pages
       {
         path: '/docs',
-        element: <Docs />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <Docs />
+          </Suspense>
+        ),
       },
       {
         path: '/edu',
-        element: <EduDocs />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <EduDocs />
+          </Suspense>
+        ),
       },
       {
         path: '/about',
-        element: <About />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <About />
+          </Suspense>
+        ),
       },
       // Protected routes
       {
         path: '/profile',
         element: (
           <ProtectedRoute>
-            <ProfilePage />
+            <Suspense fallback={<ProfilePageSkeleton />}>
+              <ProfilePage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -101,7 +150,9 @@ const routes: RouteObject[] = [
         path: '/profile/edit',
         element: (
           <ProtectedRoute>
-            <ProfileEditPage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <ProfileEditPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -109,7 +160,9 @@ const routes: RouteObject[] = [
         path: '/profile/galleries',
         element: (
           <ProtectedRoute>
-            <GalleriesPage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <GalleriesPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -117,7 +170,9 @@ const routes: RouteObject[] = [
         path: '/profile/galleries/new',
         element: (
           <ProtectedRoute>
-            <GalleryCreatePage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <GalleryCreatePage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -125,7 +180,9 @@ const routes: RouteObject[] = [
         path: '/profile/galleries/:id',
         element: (
           <ProtectedRoute>
-            <GalleryManagerPage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <GalleryManagerPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -133,7 +190,9 @@ const routes: RouteObject[] = [
         path: '/profile/galleries/:id/edit',
         element: (
           <ProtectedRoute>
-            <GalleryEditPage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <GalleryEditPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -141,7 +200,9 @@ const routes: RouteObject[] = [
         path: '/profile/galleries/:gid/collections/:cid',
         element: (
           <ProtectedRoute>
-            <CollectionManagerPage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <CollectionManagerPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -149,7 +210,9 @@ const routes: RouteObject[] = [
         path: '/profile/artworks',
         element: (
           <ProtectedRoute>
-            <ArtworksPage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <ArtworksPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -157,7 +220,9 @@ const routes: RouteObject[] = [
         path: '/artworks/upload',
         element: (
           <ProtectedRoute>
-            <ArtworkUploadPage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <ArtworkUploadPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -165,7 +230,9 @@ const routes: RouteObject[] = [
         path: '/profile/artworks/:id/edit',
         element: (
           <ProtectedRoute>
-            <ArtworkEditPage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <ArtworkEditPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -173,7 +240,9 @@ const routes: RouteObject[] = [
         path: '/profile/messages/compose',
         element: (
           <ProtectedRoute>
-            <MessageComposePage />
+            <Suspense fallback={<FormPageSkeleton />}>
+              <MessageComposePage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -181,7 +250,9 @@ const routes: RouteObject[] = [
         path: '/profile/messages/:id',
         element: (
           <ProtectedRoute>
-            <MessageThreadPage />
+            <Suspense fallback={<DetailPageSkeleton />}>
+              <MessageThreadPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -189,7 +260,9 @@ const routes: RouteObject[] = [
         path: '/profile/messages',
         element: (
           <ProtectedRoute>
-            <MessagesPage />
+            <Suspense fallback={<GridPageSkeleton />}>
+              <MessagesPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
@@ -198,7 +271,9 @@ const routes: RouteObject[] = [
         path: '/admin',
         element: (
           <AdminRoute>
-            <AdminDashboard />
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <AdminDashboard />
+            </Suspense>
           </AdminRoute>
         ),
       },
@@ -206,7 +281,9 @@ const routes: RouteObject[] = [
         path: '/admin/users',
         element: (
           <AdminRoute>
-            <AdminUsers />
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <AdminUsers />
+            </Suspense>
           </AdminRoute>
         ),
       },
@@ -214,7 +291,9 @@ const routes: RouteObject[] = [
         path: '/admin/reports',
         element: (
           <AdminRoute>
-            <AdminReports />
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <AdminReports />
+            </Suspense>
           </AdminRoute>
         ),
       },
@@ -222,31 +301,53 @@ const routes: RouteObject[] = [
         path: '/admin/moderation',
         element: (
           <AdminRoute>
-            <AdminModeration />
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <AdminModeration />
+            </Suspense>
           </AdminRoute>
         ),
       },
       // Artist routes (must be after specific routes to avoid catching /profile, /admin, etc.)
       {
         path: '/:artist',
-        element: <ArtistProfilePage />,
+        element: (
+          <Suspense fallback={<DetailPageSkeleton />}>
+            <ArtistProfilePage />
+          </Suspense>
+        ),
       },
       {
         path: '/:artist/:gallery',
-        element: <GalleryPage />,
+        element: (
+          <Suspense fallback={<DetailPageSkeleton />}>
+            <GalleryPage />
+          </Suspense>
+        ),
       },
       {
         path: '/:artist/:gallery/:collection',
-        element: <CollectionPage />,
+        element: (
+          <Suspense fallback={<DetailPageSkeleton />}>
+            <CollectionPage />
+          </Suspense>
+        ),
       },
       {
         path: '/:artist/:gallery/:collection/:artwork',
-        element: <ArtworkPage />,
+        element: (
+          <Suspense fallback={<DetailPageSkeleton />}>
+            <ArtworkPage />
+          </Suspense>
+        ),
       },
       // 404 catch-all
       {
         path: '*',
-        element: <NotFoundPage />,
+        element: (
+          <Suspense fallback={<GridPageSkeleton />}>
+            <NotFoundPage />
+          </Suspense>
+        ),
       },
     ],
   },

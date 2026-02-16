@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '../../contexts/ToastContext'
-import { Search, Ban, CheckCircle, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
+import { Search, Ban, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 interface AdminUserRow {
   id: string

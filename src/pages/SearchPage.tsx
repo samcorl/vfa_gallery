@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Search as SearchIcon } from 'lucide-react'
 import ArtworkGridItem from '../components/ui/ArtworkGridItem'
 import Pagination from '../components/ui/Pagination'
@@ -57,7 +57,7 @@ export default function SearchPage() {
       !!searchParams.get('to')
   )
   const autocompleteRef = useRef<HTMLDivElement>(null)
-  const artistSuggestionsDebounceRef = useRef<NodeJS.Timeout>()
+  const artistSuggestionsDebounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   // Fetch categories on mount
   useEffect(() => {

@@ -10,13 +10,6 @@ import { checkRapidUploads, flagSuspiciousActivity } from '../security/suspiciou
 
 const artworks = new Hono<HonoEnv>()
 
-const ALLOWED_CONTENT_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-]
-
 function getFileExtension(contentType: string): string {
   const typeMap: Record<string, string> = {
     'image/jpeg': 'jpg',

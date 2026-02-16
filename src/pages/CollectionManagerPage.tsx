@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
-import { getThumbnailUrl } from '../lib/utils/imageUrls'
-import type { CollectionDetail, CollectionArtwork } from '../types/collection'
+import type { CollectionDetail } from '../types/collection'
 
 export default function CollectionManagerPage() {
   const navigate = useNavigate()

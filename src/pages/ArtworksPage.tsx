@@ -7,7 +7,7 @@ import type { Artwork, PaginatedArtworks } from '../types/artwork'
 
 export default function ArtworksPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { } = useAuth()
   const toast = useToast()
 
   const [artworks, setArtworks] = useState<Artwork[]>([])

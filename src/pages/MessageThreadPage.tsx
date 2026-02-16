@@ -307,7 +307,7 @@ export default function MessageThreadPage() {
             {message.context.type}
           </p>
           <button
-            onClick={() => navigate(getContextUrl(message.context))}
+            onClick={() => navigate(getContextUrl(message.context!))}
             className="text-sm font-medium text-gray-900 hover:text-gray-700 transition"
           >
             {message.context.title}

@@ -50,7 +50,7 @@ interface FormData {
 export default function GroupManagePage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  useAuth()
 
   const [group, setGroup] = useState<GroupData | null>(null)
   const [members, setMembers] = useState<Member[]>([])

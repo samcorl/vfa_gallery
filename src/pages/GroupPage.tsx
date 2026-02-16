@@ -32,7 +32,7 @@ interface GroupData {
 
 export default function GroupPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [group, setGroup] = useState<GroupData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

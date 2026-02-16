@@ -53,7 +53,7 @@ export async function sendEmail(
  * Generate HTML email template for email verification
  */
 export function getVerificationEmailTemplate(
-  userEmail: string,
+  _userEmail: string,
   verificationUrl: string,
   userName?: string
 ): string {

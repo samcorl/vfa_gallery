@@ -42,12 +42,7 @@ type GalleriesResponse = {
   }
 }
 
-function getInitials(name: string | null, username: string): string {
-  if (name) {
-    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-  }
-  return username.slice(0, 2).toUpperCase()
-}
+
 
 function SocialIcon({ platform }: { platform: string }): JSX.Element {
   const icons: Record<string, string> = {

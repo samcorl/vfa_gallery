@@ -329,7 +329,7 @@ admin.get('/messages/pending', async (c) => {
 admin.post('/messages/:id/approve', async (c) => {
   const db = c.env.DB
   const messageId = c.req.param('id')
-  const { userId } = getCurrentUser(c)
+  const authUser = getCurrentUser(c)!
   const now = new Date().toISOString()
 
   // Verify message exists and is pending
@@ -345,20 +345,20 @@ admin.post('/messages/:id/approve', async (c) => {
   // Update status
   await db
     .prepare("UPDATE messages SET status = 'approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?")
-    .bind(userId, now, messageId)
+    .bind(authUser.userId, now, messageId)
     .run()
 
   // Log activity
   await db
     .prepare('INSERT INTO activity_log (id, user_id, action, entity_type, entity_id, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(crypto.randomUUID(), userId, 'message_approved', 'message', messageId, JSON.stringify({ previous_status: 'pending_review' }), now)
+    .bind(crypto.randomUUID(), authUser.userId, 'message_approved', 'message', messageId, JSON.stringify({ previous_status: 'pending_review' }), now)
     .run()
 
   return c.json({
     data: {
       id: messageId,
       status: 'approved',
-      reviewedBy: userId,
+      reviewedBy: authUser.userId,
       reviewedAt: now,
     },
   })
@@ -371,7 +371,7 @@ admin.post('/messages/:id/approve', async (c) => {
 admin.post('/messages/:id/reject', async (c) => {
   const db = c.env.DB
   const messageId = c.req.param('id')
-  const { userId } = getCurrentUser(c)
+  const authUser2 = getCurrentUser(c)!
   const now = new Date().toISOString()
 
   // Parse optional reason
@@ -407,7 +407,7 @@ admin.post('/messages/:id/reject', async (c) => {
   // Update status
   await db
     .prepare("UPDATE messages SET status = 'rejected', reviewed_by = ?, reviewed_at = ? WHERE id = ?")
-    .bind(userId, now, messageId)
+    .bind(authUser2.userId, now, messageId)
     .run()
 
   // Log activity with reason in metadata
@@ -416,13 +416,13 @@ admin.post('/messages/:id/reject', async (c) => {
 
   await db
     .prepare('INSERT INTO activity_log (id, user_id, action, entity_type, entity_id, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(crypto.randomUUID(), userId, 'message_rejected', 'message', messageId, JSON.stringify(metadata), now)
+    .bind(crypto.randomUUID(), authUser2.userId, 'message_rejected', 'message', messageId, JSON.stringify(metadata), now)
     .run()
 
   const responseData: Record<string, any> = {
     id: messageId,
     status: 'rejected',
-    reviewedBy: userId,
+    reviewedBy: authUser2.userId,
     reviewedAt: now,
   }
   if (reason) responseData.reason = reason

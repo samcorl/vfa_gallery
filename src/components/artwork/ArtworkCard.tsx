@@ -10,7 +10,7 @@ interface ArtworkCardProps {
 
 export function ArtworkCard({
   artwork,
-  showArtist = false,
+  showArtist: _showArtist = false,
   showStatus = false,
   onClick,
 }: ArtworkCardProps) {

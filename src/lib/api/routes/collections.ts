@@ -86,7 +86,7 @@ async function verifyGalleryOwnership(db: any, galleryId: string, userId: string
   const gallery = await db
     .prepare('SELECT * FROM galleries WHERE id = ?')
     .bind(galleryId)
-    .first<any>()
+    .first()
 
   if (!gallery || gallery.user_id !== userId) {
     throw Errors.notFound('Gallery')
@@ -106,7 +106,7 @@ async function verifyCollectionOwnership(
   const collection = await db
     .prepare('SELECT * FROM collections WHERE id = ?')
     .bind(collectionId)
-    .first<any>()
+    .first()
 
   if (!collection) {
     throw Errors.notFound('Collection')
@@ -115,7 +115,7 @@ async function verifyCollectionOwnership(
   const gallery = await db
     .prepare('SELECT * FROM galleries WHERE id = ?')
     .bind(collection.gallery_id)
-    .first<any>()
+    .first()
 
   if (!gallery || gallery.user_id !== userId) {
     throw Errors.notFound('Collection')
@@ -390,7 +390,7 @@ collections.patch('/collections/:id', requireAuth, async (c) => {
   const db = c.env.DB
 
   // Verify collection ownership
-  const { collection, gallery } = await verifyCollectionOwnership(db, collectionId, authUser.userId)
+  const { collection } = await verifyCollectionOwnership(db, collectionId, authUser.userId)
 
   // Map camelCase to snake_case for DB
   const fieldMap: Record<string, string> = {
@@ -515,14 +515,14 @@ collections.post('/collections/:id/copy', requireAuth, async (c) => {
   const db = c.env.DB
 
   // Verify user owns source collection (via its gallery)
-  const { collection, gallery: sourceGallery } = await verifyCollectionOwnership(
+  const { collection } = await verifyCollectionOwnership(
     db,
     collectionId,
     authUser.userId
   )
 
   // Verify user owns target gallery
-  const targetGallery = await verifyGalleryOwnership(db, targetGalleryId, authUser.userId)
+  await verifyGalleryOwnership(db, targetGalleryId, authUser.userId)
 
   // Check collection limit
   const countRow = await db
@@ -599,7 +599,7 @@ collections.post('/collections/:id/artworks', requireAuth, async (c) => {
   if (!authUser) throw Errors.unauthorized()
 
   const db = c.env.DB
-  const { collection } = await verifyCollectionOwnership(db, id, authUser.userId)
+  await verifyCollectionOwnership(db, id, authUser.userId)
 
   const body = await c.req.json<{ artworkId?: string }>()
   if (!body.artworkId || typeof body.artworkId !== 'string') {
@@ -681,8 +681,9 @@ collections.delete('/collections/:id/artworks/:artworkId', requireAuth, async (c
     .bind(id)
     .all<{ artwork_id: string }>()
 
-  if (remaining.results.length > 0) {
-    const updates = remaining.results.map((row, idx) =>
+  const remainingResults = remaining.results ?? []
+  if (remainingResults.length > 0) {
+    const updates = remainingResults.map((row, idx) =>
       db
         .prepare('UPDATE collection_artworks SET position = ? WHERE collection_id = ? AND artwork_id = ?')
         .bind(idx, id, row.artwork_id)
@@ -724,7 +725,7 @@ collections.patch('/collections/:id/artworks/reorder', requireAuth, async (c) =>
     .bind(id)
     .all<{ artwork_id: string }>()
 
-  const currentIds = new Set(current.results.map((r) => r.artwork_id))
+  const currentIds = new Set((current.results ?? []).map((r) => r.artwork_id))
   const providedIds = new Set(body.artworkIds)
 
   // Validate: same count, no duplicates, all IDs match

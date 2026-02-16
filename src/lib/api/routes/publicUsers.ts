@@ -8,7 +8,7 @@ const publicUsers = new Hono<HonoEnv>()
 // GET /:username - Public user profile
 publicUsers.get('/:username', async (c) => {
   const { username } = c.req.param()
-  const db = c.env.db
+  const db = c.env.DB
 
   // Look up user by username where status = 'active'
   const user = await db
@@ -18,7 +18,7 @@ publicUsers.get('/:username', async (c) => {
        WHERE username = ? AND status = 'active'`
     )
     .bind(username)
-    .first()
+    .first<{ id: string; username: string; display_name: string | null; avatar_url: string | null; bio: string | null; website: string | null; socials: string | null; created_at: string }>()
 
   if (!user) {
     throw Errors.notFound('User')
@@ -60,7 +60,7 @@ publicUsers.get('/:username/galleries', async (c) => {
   const page = parseInt(c.req.query('page') || '1', 10)
   const pageSize = Math.min(parseInt(c.req.query('pageSize') || '20', 10), 100)
 
-  const db = c.env.db
+  const db = c.env.DB
 
   // Verify user exists and is active
   const user = await db
@@ -108,7 +108,7 @@ publicUsers.get('/:username/galleries', async (c) => {
   const totalPages = Math.ceil(total / pageSize)
 
   return c.json({
-    data: galleries.results.map((g) => ({
+    data: (galleries.results ?? []).map((g) => ({
       id: g.id,
       slug: g.slug,
       name: g.name,

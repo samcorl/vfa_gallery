@@ -34,7 +34,7 @@ interface ActivityEntry {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth()
+  const { } = useAuth()
   const toast = useToast()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [activities, setActivities] = useState<ActivityEntry[]>([])

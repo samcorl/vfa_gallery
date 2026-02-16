@@ -339,11 +339,11 @@ auth.post('/test-login', async (c) => {
     }>()
 
   let userId: string
-  let userRole: string
+  let userRole: 'user' | 'admin'
 
   if (existingUser) {
     userId = existingUser.id
-    userRole = role || existingUser.role
+    userRole = (role || existingUser.role) as 'user' | 'admin'
 
     // Update last login
     await db
@@ -354,7 +354,7 @@ auth.post('/test-login', async (c) => {
     // Create test user
     userId = generateUserId()
     const username = generateUniqueUsername(email)
-    userRole = role || 'user'
+    userRole = (role as 'user' | 'admin') || 'user'
 
     const defaultGalleryId = crypto.randomUUID()
     const defaultCollectionId = crypto.randomUUID()

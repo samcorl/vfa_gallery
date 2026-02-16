@@ -4,12 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import Avatar from '../components/ui/Avatar'
 import { UserPlus, Trash2, Shield } from 'lucide-react'
-import type { GalleryDetail, GalleryCollection } from '../types/gallery'
-
-interface CreateCollectionForm {
-  name: string
-  description: string
-}
+import type { GalleryDetail } from '../types/gallery'
 
 interface GalleryRole {
   userId: string

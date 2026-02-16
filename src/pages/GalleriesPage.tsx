@@ -26,7 +26,7 @@ interface CreateGalleryForm {
 
 export default function GalleriesPage() {
   const navigate = useNavigate()
-  const { user, isLoading: authLoading } = useAuth()
+  const { isLoading: authLoading } = useAuth()
   const toast = useToast()
 
   const [galleries, setGalleries] = useState<Gallery[]>([])

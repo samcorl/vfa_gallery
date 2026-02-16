@@ -15,7 +15,7 @@ interface ArtistResult {
 export default function MessageComposePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
 
   const [recipientId, setRecipientId] = useState<string | null>(
     searchParams.get('recipientId')
@@ -30,7 +30,7 @@ export default function MessageComposePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<ArtistResult[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
-  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null)
+  const [searchDebounce, setSearchDebounce] = useState<ReturnType<typeof setTimeout> | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const contextType = searchParams.get('contextType')

@@ -217,7 +217,7 @@ groups.get('/:slug', optionalAuth, async (c) => {
   const group = await db
     .prepare('SELECT * FROM groups WHERE slug = ?')
     .bind(slug)
-    .first()
+    .first<Record<string, unknown>>()
 
   if (!group) {
     throw Errors.notFound('Group')
@@ -593,8 +593,8 @@ groups.delete('/:id/members/:userId', requireAuth, async (c) => {
     throw Errors.badRequest('Cannot remove group owner')
   }
 
-  // If removing self and is admin/manager, check if there are other admins
-  if (targetUserId === authUser.userId && userRole.role !== 'member') {
+  // If removing self (as owner/manager), check if there are other admins
+  if (targetUserId === authUser.userId) {
     const adminCount = await db
       .prepare(
         `SELECT COUNT(*) as count FROM group_members

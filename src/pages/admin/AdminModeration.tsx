@@ -4,7 +4,6 @@ import {
   Mail,
   CheckCircle,
   XCircle,
-  Flag,
   ChevronLeft,
   ChevronRight,
   ChevronDown,

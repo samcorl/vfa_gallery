@@ -9,7 +9,7 @@ import type { GalleryDetail, GalleryDeleteInfo } from '../types/gallery'
 export default function GalleryEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const [gallery, setGallery] = useState<GalleryDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,13 +31,13 @@ export default function GalleryEditPage() {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load gallery'
         setError(message)
-        toast.error(message)
+        toastError(message)
       } finally {
         setLoading(false)
       }
     }
     fetchGallery()
-  }, [id, toast])
+  }, [id, toastError])
 
   // Handle form submit
   const handleSubmit = async (data: GalleryFormData) => {
@@ -63,7 +63,7 @@ export default function GalleryEditPage() {
 
       const updated: GalleryDetail = await res.json()
       setGallery(updated)
-      toast.success('Gallery updated')
+      toastSuccess('Gallery updated')
     } catch (err) {
       throw err
     } finally {
@@ -90,10 +90,10 @@ export default function GalleryEditPage() {
 
       const updated: GalleryDetail = await res.json()
       setGallery(updated)
-      toast.success('Gallery status updated')
+      toastSuccess('Gallery status updated')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update status'
-      toast.error(message)
+      toastError(message)
     }
   }
 
@@ -113,7 +113,7 @@ export default function GalleryEditPage() {
       setShowDeleteConfirm(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load delete info'
-      toast.error(message)
+      toastError(message)
     }
   }
 
@@ -133,11 +133,11 @@ export default function GalleryEditPage() {
         throw new Error(err?.error?.message || 'Failed to delete')
       }
 
-      toast.success('Gallery deleted')
+      toastSuccess('Gallery deleted')
       navigate('/profile/galleries')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast.error(message)
+      toastError(message)
     } finally {
       setDeleting(false)
       setShowDeleteConfirm(false)

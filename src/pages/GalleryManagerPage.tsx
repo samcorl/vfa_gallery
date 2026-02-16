@@ -20,7 +20,7 @@ export default function GalleryManagerPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { isLoading: authLoading } = useAuth()
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const [gallery, setGallery] = useState<GalleryDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,12 +61,12 @@ export default function GalleryManagerPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load gallery'
       setError(message)
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [id, toast])
+  }, [id, toastError])
 
   const fetchRoles = useCallback(async () => {
     if (!id) return
@@ -126,7 +126,7 @@ export default function GalleryManagerPage() {
         throw new Error(errData.message || 'Failed to create collection')
       }
 
-      toast.success('Collection created successfully')
+      toastSuccess('Collection created successfully')
       setShowCreateModal(false)
       setNewCollectionName('')
       setNewCollectionDescription('')
@@ -134,7 +134,7 @@ export default function GalleryManagerPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create collection'
       setFormError(message)
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setCreating(false)
@@ -158,9 +158,9 @@ export default function GalleryManagerPage() {
       const data = await res.json()
       setRoles([...roles, data.data])
       setAddUsername('')
-      toast.success('Admin added successfully')
+      toastSuccess('Admin added successfully')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add admin')
+      toastError(err instanceof Error ? err.message : 'Failed to add admin')
     } finally {
       setAddingRole(false)
     }
@@ -178,9 +178,9 @@ export default function GalleryManagerPage() {
         throw new Error(errData.error?.message || 'Failed to remove admin')
       }
       setRoles(roles.filter((r) => r.userId !== userId))
-      toast.success('Admin removed successfully')
+      toastSuccess('Admin removed successfully')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove admin')
+      toastError(err instanceof Error ? err.message : 'Failed to remove admin')
     }
   }
 

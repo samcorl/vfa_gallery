@@ -18,7 +18,7 @@ interface RateLimitTierConfig {
 const RATE_LIMIT_TIERS: Record<RateLimitTier, RateLimitTierConfig> = {
   GENERAL: { maxRequests: 100, windowSeconds: 60 },
   UPLOAD: { maxRequests: 10, windowSeconds: 3600 },
-  AUTH: { maxRequests: 5, windowSeconds: 60 },
+  AUTH: { maxRequests: 20, windowSeconds: 60 },
   PUBLIC: { maxRequests: 200, windowSeconds: 60 },
   MESSAGE: { maxRequests: 10, windowSeconds: 3600 },
 }

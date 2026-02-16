@@ -8,7 +8,7 @@ import type { Artwork, PaginatedArtworks } from '../types/artwork'
 export default function ArtworksPage() {
   const navigate = useNavigate()
   const { } = useAuth()
-  const toast = useToast()
+  const { error: showError } = useToast()
 
   const [artworks, setArtworks] = useState<Artwork[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,12 +40,12 @@ export default function ArtworksPage() {
       setTotal(data.pagination.total)
       setPage(data.pagination.page)
     } catch (err) {
-      toast.error('Failed to load artworks')
+      showError('Failed to load artworks')
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [status, category, toast])
+  }, [status, category, showError])
 
   useEffect(() => {
     fetchArtworks(1)

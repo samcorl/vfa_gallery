@@ -8,7 +8,7 @@ export default function CollectionManagerPage() {
   const navigate = useNavigate()
   const { gid, cid } = useParams<{ gid: string; cid: string }>()
   const { isLoading: authLoading } = useAuth()
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   // Data states
   const [collection, setCollection] = useState<CollectionDetail | null>(null)
@@ -55,12 +55,12 @@ export default function CollectionManagerPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load collection'
       setError(message)
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [cid, toast])
+  }, [cid, toastError])
 
   useEffect(() => {
     if (!authLoading) {
@@ -70,7 +70,7 @@ export default function CollectionManagerPage() {
 
   const handleSaveCollection = async () => {
     if (!cid || !editName.trim()) {
-      toast.error('Collection name is required')
+      toastError('Collection name is required')
       return
     }
 
@@ -91,12 +91,12 @@ export default function CollectionManagerPage() {
         throw new Error(errData.message || 'Failed to update collection')
       }
 
-      toast.success('Collection updated successfully')
+      toastSuccess('Collection updated successfully')
       setEditing(false)
       fetchCollection()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update collection'
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setSaving(false)
@@ -123,7 +123,7 @@ export default function CollectionManagerPage() {
       setUserArtworks(data.data || [])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load artworks'
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setLoadingArtworks(false)
@@ -168,13 +168,13 @@ export default function CollectionManagerPage() {
         )
       }
 
-      toast.success(`Added ${artworkIds.length} artwork(s) to collection`)
+      toastSuccess(`Added ${artworkIds.length} artwork(s) to collection`)
       setShowAddModal(false)
       setSelectedArtworkIds(new Set())
       fetchCollection()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add artworks'
-      toast.error(message)
+      toastError(message)
       console.error(err)
     }
   }
@@ -196,11 +196,11 @@ export default function CollectionManagerPage() {
         throw new Error(errData?.message || 'Failed to remove artwork')
       }
 
-      toast.success('Artwork removed from collection')
+      toastSuccess('Artwork removed from collection')
       fetchCollection()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove artwork'
-      toast.error(message)
+      toastError(message)
       console.error(err)
     }
   }

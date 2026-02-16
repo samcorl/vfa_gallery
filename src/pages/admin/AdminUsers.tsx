@@ -52,7 +52,7 @@ interface Pagination {
 }
 
 export default function AdminUsers() {
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   // State
   const [users, setUsers] = useState<AdminUserRow[]>([])
@@ -105,12 +105,12 @@ export default function AdminUsers() {
         setPagination(result.data.pagination)
       } catch (error) {
         console.error('Error fetching users:', error)
-        toast.error('Failed to load users')
+        toastError('Failed to load users')
       } finally {
         setLoading(false)
       }
     },
-    [search, statusFilter, sort, order, toast]
+    [search, statusFilter, sort, order, toastError]
   )
 
   // Fetch user detail
@@ -131,12 +131,12 @@ export default function AdminUsers() {
       setSelectedUser(result.data)
     } catch (error) {
       console.error('Error fetching user detail:', error)
-      toast.error('Failed to load user details')
+      toastError('Failed to load user details')
       setShowDetail(false)
     } finally {
       setDetailLoading(false)
     }
-  }, [toast])
+  }, [toastError])
 
   // Handle suspend
   const handleSuspend = useCallback(
@@ -157,15 +157,15 @@ export default function AdminUsers() {
           throw new Error('Failed to suspend user')
         }
 
-        toast.success('User suspended')
+        toastSuccess('User suspended')
         setShowDetail(false)
         await fetchUsers()
       } catch (error) {
         console.error('Error suspending user:', error)
-        toast.error('Failed to suspend user')
+        toastError('Failed to suspend user')
       }
     },
-    [toast, fetchUsers]
+    [toastSuccess, fetchUsers]
   )
 
   // Handle activate
@@ -187,15 +187,15 @@ export default function AdminUsers() {
           throw new Error('Failed to activate user')
         }
 
-        toast.success('User activated')
+        toastSuccess('User activated')
         setShowDetail(false)
         await fetchUsers()
       } catch (error) {
         console.error('Error activating user:', error)
-        toast.error('Failed to activate user')
+        toastError('Failed to activate user')
       }
     },
-    [toast, fetchUsers]
+    [toastSuccess, fetchUsers]
   )
 
   // Handle sort

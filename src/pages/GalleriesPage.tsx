@@ -27,7 +27,7 @@ interface CreateGalleryForm {
 export default function GalleriesPage() {
   const navigate = useNavigate()
   const { isLoading: authLoading } = useAuth()
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const [galleries, setGalleries] = useState<Gallery[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,12 +67,12 @@ export default function GalleriesPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load galleries'
       setError(message)
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toastError])
 
   useEffect(() => {
     if (!authLoading) {
@@ -105,14 +105,14 @@ export default function GalleriesPage() {
         throw new Error(errData.message || 'Failed to create gallery')
       }
 
-      toast.success('Gallery created successfully')
+      toastSuccess('Gallery created successfully')
       setShowCreateModal(false)
       setFormData({ name: '', description: '' })
       fetchGalleries(1)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create gallery'
       setFormError(message)
-      toast.error(message)
+      toastError(message)
       console.error(err)
     } finally {
       setSubmitting(false)

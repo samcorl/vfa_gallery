@@ -19,7 +19,7 @@ const CATEGORIES = [
 export default function ArtworkEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const [artwork, setArtwork] = useState<Artwork | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,19 +56,19 @@ export default function ArtworkEditPage() {
         setCategory(data.category || 'other')
         setTags(data.tags || [])
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to load artwork')
+        toastError(err instanceof Error ? err.message : 'Failed to load artwork')
       } finally {
         setLoading(false)
       }
     }
     fetchArtwork()
-  }, [id, toast])
+  }, [id, toastError])
 
   // Save metadata
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!artwork) return
-    if (!title.trim()) { toast.error('Title is required'); return }
+    if (!title.trim()) { toastError('Title is required'); return }
 
     setSaving(true)
     try {
@@ -94,9 +94,9 @@ export default function ArtworkEditPage() {
 
       const updated: Artwork = await res.json()
       setArtwork(updated)
-      toast.success('Artwork updated')
+      toastSuccess('Artwork updated')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save')
+      toastError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -112,10 +112,10 @@ export default function ArtworkEditPage() {
         credentials: 'include',
       })
       if (!res.ok) throw new Error('Failed to delete')
-      toast.success('Artwork deleted')
+      toastSuccess('Artwork deleted')
       navigate('/profile/artworks')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete')
+      toastError(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
       setDeleting(false)
       setShowDeleteConfirm(false)
@@ -152,9 +152,9 @@ export default function ArtworkEditPage() {
       const updated: Artwork = await replaceRes.json()
       setArtwork(updated)
       setShowReplaceImage(false)
-      toast.success('Image replaced')
+      toastSuccess('Image replaced')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to replace image')
+      toastError(err instanceof Error ? err.message : 'Failed to replace image')
     } finally {
       setReplacingImage(false)
     }
@@ -219,7 +219,7 @@ export default function ArtworkEditPage() {
               <div className="space-y-3">
                 <ImageDropzone
                   onImageSelected={handleReplaceImage}
-                  onError={(msg) => toast.error(msg)}
+                  onError={(msg) => toastError(msg)}
                   disabled={replacingImage}
                 />
                 {replacingImage && (

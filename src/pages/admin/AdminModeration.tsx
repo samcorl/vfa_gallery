@@ -40,7 +40,7 @@ interface Pagination {
 }
 
 export default function AdminModeration() {
-  const toast = useToast()
+  const { error: toastError, success: toastSuccess } = useToast()
 
   const [messages, setMessages] = useState<PendingMessage[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, pages: 0 })
@@ -72,11 +72,11 @@ export default function AdminModeration() {
       setMessages(json.data.messages)
       setPagination(json.data.pagination)
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load moderation queue')
+      toastError(err.message || 'Failed to load moderation queue')
     } finally {
       setLoading(false)
     }
-  }, [flaggedOnly, sortBy, toast])
+  }, [flaggedOnly, sortBy, toastError])
 
   useEffect(() => {
     fetchMessages(1)
@@ -94,10 +94,10 @@ export default function AdminModeration() {
 
       if (!res.ok) throw new Error('Failed to approve message')
 
-      toast.success('Message approved')
+      toastSuccess('Message approved')
       fetchMessages(pagination.page)
     } catch (err: any) {
-      toast.error(err.message || 'Failed to approve message')
+      toastError(err.message || 'Failed to approve message')
     } finally {
       setActioningId(null)
     }
@@ -115,12 +115,12 @@ export default function AdminModeration() {
 
       if (!res.ok) throw new Error('Failed to reject message')
 
-      toast.success('Message rejected')
+      toastSuccess('Message rejected')
       setRejectingId(null)
       setRejectReason('')
       fetchMessages(pagination.page)
     } catch (err: any) {
-      toast.error(err.message || 'Failed to reject message')
+      toastError(err.message || 'Failed to reject message')
     } finally {
       setActioningId(null)
     }

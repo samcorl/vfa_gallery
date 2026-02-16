@@ -35,7 +35,7 @@ interface ActivityEntry {
 
 export default function AdminDashboard() {
   const { } = useAuth()
-  const toast = useToast()
+  const { error: toastError } = useToast()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [activities, setActivities] = useState<ActivityEntry[]>([])
   const [statsLoading, setStatsLoading] = useState(true)
@@ -55,11 +55,11 @@ export default function AdminDashboard() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch stats'
       setError(message)
-      toast.error(message)
+      toastError(message)
     } finally {
       setStatsLoading(false)
     }
-  }, [toast])
+  }, [toastError])
 
   const fetchActivity = useCallback(async () => {
     try {
